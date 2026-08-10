@@ -61,8 +61,44 @@ public class ObjectDefinitionLoaderOSRS extends ObjectDefinitionLoader {
 				break;
 			}
 
-			if (opcode == 2) {
+			if (opcode == 1) {
+				// Legacy model list: short model ids + type byte.
+				// Superseded by opcode 6 (int ids) but still valid input.
+				int count = buffer.readUByte();
+				if (count > 0) {
+					if (definition.getModelIds() == null) {
+						int[] modelTypes = new int[count];
+						int[] modelIds = new int[count];
+
+						for (int i = 0; i < count; i++) {
+							modelIds[i] = buffer.readUShort();
+							modelTypes[i] = buffer.readUByte();
+						}
+						definition.setModelIds(modelIds);
+						definition.setModelTypes(modelTypes);
+					} else {
+						buffer.setPosition(buffer.getPosition() + count * 3);
+					}
+				}
+			} else if (opcode == 2) {
 				definition.setName(buffer.readOSRSString());
+			} else if (opcode == 5) {
+				// Legacy model list: short model ids, no types.
+				// Superseded by opcode 7 (int ids).
+				int count = buffer.readUByte();
+				if (count > 0) {
+					if (definition.getModelIds() == null) {
+						definition.setModelTypes(null);
+						int[] modelIds = new int[count];
+
+						for (int i = 0; i < count; i++) {
+							modelIds[i] = buffer.readUShort();
+						}
+						definition.setModelIds(modelIds);
+					} else {
+						buffer.setPosition(buffer.getPosition() + count * 2);
+					}
+				}
 			} else if (opcode == 6) {
 				int count = buffer.readUByte();
 				if (count > 0) {
@@ -129,13 +165,16 @@ public class ObjectDefinitionLoaderOSRS extends ObjectDefinitionLoader {
 			} else if (opcode == 39) {
 				definition.setLightDiffusion(buffer.readByte());
 			} else if (opcode >= 30 && opcode < 39) {
-				String[] interactions = new String[10];
-
-				interactions[opcode - 30] = buffer.readOSRSString();
-				if (interactions[opcode - 30].equalsIgnoreCase("hidden")) {
-					interactions[opcode - 30] = null;
+				// Reuse the existing array: allocating a fresh one per opcode
+				// discarded every previously decoded option.
+				String[] interactions = definition.getInteractions();
+				if (interactions == null) {
+					interactions = new String[10];
+					definition.setInteractions(interactions);
 				}
-				definition.setInteractions(interactions);
+
+				String interaction = buffer.readOSRSString();
+				interactions[opcode - 30] = interaction.equalsIgnoreCase("hidden") ? null : interaction;
 			} else if (opcode == 40) {
 				int count = buffer.readUByte();
 				int[] originalColours = new int[count];
@@ -239,6 +278,8 @@ public class ObjectDefinitionLoaderOSRS extends ObjectDefinitionLoader {
                 buffer.readUShort();
                 buffer.readUByte();
                 buffer.readUShort();
+            } else if (opcode == 94) {
+                // Zero-payload flag, purpose unknown; present since rev 236.
             } else if (opcode == 95) {
                 buffer.readUByte();
             } else if (opcode == 96) {
