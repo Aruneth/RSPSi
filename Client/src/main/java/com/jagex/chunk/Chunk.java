@@ -200,6 +200,7 @@ public class Chunk {
 						if(definition != null) {
 							if(definition.getAreaId() != -1) {
 								RSArea area = RSAreaLoader.get(definition.getAreaId());
+								try {
 								int function = area.getSpriteId();
 								
 								if (function >= 0) {
@@ -212,19 +213,23 @@ public class Chunk {
 									mapObjectY[mapObjectCount] = viewportY;
 									mapObjectCount++;
 								}
-							} else {
+							} catch (Exception e) {
+								}
+								}else {
+								try {
+									int function = definition.getMinimapFunction();
 
-								int function = definition.getMinimapFunction();
-			
-								if (function >= 0 && function < Client.mapFunctions.length) {
-									int viewportX = x;
-									int viewportY = y;
-			
-									mapObjectSprites[mapObjectCount] = Client.mapFunctions[function];
-									mapObjectSelected[mapObjectCount] = selected;
-									mapObjectX[mapObjectCount] = viewportX;
-									mapObjectY[mapObjectCount] = viewportY;
-									mapObjectCount++;
+									if (function >= 0 && function < Client.mapFunctions.length) {
+										int viewportX = x;
+										int viewportY = y;
+
+										mapObjectSprites[mapObjectCount] = Client.mapFunctions[function];
+										mapObjectSelected[mapObjectCount] = selected;
+										mapObjectX[mapObjectCount] = viewportX;
+										mapObjectY[mapObjectCount] = viewportY;
+										mapObjectCount++;
+									}
+								} catch (Exception e) {
 								}
 							}
 						}
