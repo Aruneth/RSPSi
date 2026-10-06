@@ -455,13 +455,15 @@ public class RegionEditorWindow extends Application {
 			for (int i = 0; i < entries.size(); i++)
 				loaded[positions.get(i)[0]][positions.get(i)[1]] = entries.get(i);
 
-			grid = loaded;
-			selectedX = 0;
-			selectedY = 0;
+			// resize first: each spinner change resizes the grid using the other spinner's
+			// (old) value, which would cut off part of the loaded grid
 			ensureSpinnerMax(widthSpinner, width);
 			ensureSpinnerMax(lengthSpinner, length);
 			widthSpinner.getValueFactory().setValue(width);
 			lengthSpinner.getValueFactory().setValue(length);
+			grid = loaded;
+			selectedX = 0;
+			selectedY = 0;
 			rebuildGrid();
 			statusLabel.setText("Opened " + file.getName() + " (" + count + " regions)");
 		} catch (IOException | RuntimeException ex) {
