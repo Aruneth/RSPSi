@@ -350,6 +350,13 @@ public class MainWindow extends Application {
 				mapView.initTiles();
 			});
 
+			RegionEditorWindow regionEditor = new RegionEditorWindow(packData -> Client.runLater.add(() -> {
+				clientInstance.loadChunks(MultiMapEncoder.decode(packData));
+				fullMapView.resizeMap();
+			}));
+			regionEditor.start(new Stage());
+			controller.getShowRegionEditor().setOnAction(evt -> regionEditor.show());
+
 
 
 			ChangeListenerUtil.addRangeListener(Options.rotation, 0, 3, true);

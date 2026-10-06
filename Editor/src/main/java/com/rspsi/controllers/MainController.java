@@ -63,6 +63,9 @@ public class MainController {
 	private MenuItem showMapIndexEditor;
 
 	@FXML
+	private MenuItem showRegionEditor;
+
+	@FXML
 	private HBox grabBar;
 
 	@FXML

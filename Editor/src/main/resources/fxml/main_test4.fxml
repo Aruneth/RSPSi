@@ -531,6 +531,7 @@
                               <MenuItem fx:id="fixHeightsBtn" mnemonicParsing="false" text="Reset tile heights" />
                               <SeparatorMenuItem mnemonicParsing="false" />
                               <MenuItem fx:id="showMapIndexEditor" mnemonicParsing="false" text="Show map_index editor" />
+                              <MenuItem fx:id="showRegionEditor" mnemonicParsing="false" text="Show region editor" />
                               <MenuItem fx:id="showFullMap" mnemonicParsing="false" text="Show full map" />
                               <MenuItem fx:id="showObjectViewBtn" mnemonicParsing="false" text="Show object view" />
                               <MenuItem fx:id="showRemapperBtn" mnemonicParsing="false" text="Show remapper" />
