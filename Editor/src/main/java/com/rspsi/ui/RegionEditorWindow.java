@@ -70,14 +70,35 @@ public class RegionEditorWindow extends Application {
 		public final int landscapeId;
 		public final int objectId;
 
+		/** Map data taken from an opened .pack, null for regions read from the cache */
+		public final byte[] packTiles;
+		public final byte[] packObjects;
+		private final String packName;
+
 		RegionEntry(int hash, int landscapeId, int objectId) {
 			this.hash = hash;
 			this.landscapeId = landscapeId;
 			this.objectId = objectId;
+			this.packTiles = null;
+			this.packObjects = null;
+			this.packName = null;
+		}
+
+		RegionEntry(String packName, int landscapeId, int objectId, byte[] tiles, byte[] objects) {
+			this.hash = -1;
+			this.landscapeId = landscapeId;
+			this.objectId = objectId;
+			this.packTiles = tiles;
+			this.packObjects = objects;
+			this.packName = packName;
+		}
+
+		public boolean isFromPack() {
+			return packTiles != null;
 		}
 
 		public boolean isEmpty() {
-			return hash == -1;
+			return hash == -1 && !isFromPack();
 		}
 
 		public int regionX() {
@@ -89,6 +110,8 @@ public class RegionEditorWindow extends Application {
 		}
 
 		public String shortName() {
+			if (isFromPack())
+				return packName + "\n(pack)";
 			return isEmpty() ? "Empty" : regionX() + "_" + regionY();
 		}
 
@@ -142,7 +165,10 @@ public class RegionEditorWindow extends Application {
 			resizeGrid();
 		});
 
-		HBox sizeBox = new HBox(6, new Label("Width:"), widthSpinner, new Label("Length:"), lengthSpinner, newBtn);
+		Button openPackBtn = new Button("Open .pack...");
+		openPackBtn.setOnAction(evt -> openPack());
+
+		HBox sizeBox = new HBox(6, new Label("Width:"), widthSpinner, new Label("Length:"), lengthSpinner, newBtn, openPackBtn);
 		sizeBox.setAlignment(Pos.CENTER_LEFT);
 
 		gridPane.setHgap(2);
@@ -267,7 +293,8 @@ public class RegionEditorWindow extends Application {
 				ToggleButton cell = new ToggleButton("[" + x + "," + y + "]\n" + entry.shortName());
 				cell.setMinSize(CELL_SIZE, CELL_SIZE);
 				cell.setMaxSize(CELL_SIZE, CELL_SIZE);
-				cell.setStyle(entry.isEmpty() ? "-fx-opacity: 0.6;" : "-fx-font-weight: bold;");
+				cell.setStyle(entry.isEmpty() ? "-fx-opacity: 0.6;"
+						: entry.isFromPack() ? "-fx-font-style: italic;" : "-fx-font-weight: bold;");
 				cell.setToggleGroup(cellGroup);
 				cell.setSelected(x == selectedX && y == selectedY);
 				cell.setOnAction(evt -> {
@@ -301,7 +328,10 @@ public class RegionEditorWindow extends Application {
 				RegionEntry entry = grid[x][y];
 				byte[] tiles = null;
 				byte[] objects = null;
-				if (!entry.isEmpty()) {
+				if (entry.isFromPack()) {
+					tiles = entry.packTiles;
+					objects = entry.packObjects;
+				} else if (!entry.isEmpty()) {
 					tiles = readMap(entry.landscapeId, 0, entry.hash);
 					objects = readMap(entry.objectId, 1, entry.hash);
 					if (tiles == null)
@@ -383,6 +413,77 @@ public class RegionEditorWindow extends Application {
 			log.error("Failed to save pack", ex);
 			FXDialogs.showError(stage, "Error while saving map!", "There was an error while writing the packed maps file:\n" + ex.getMessage());
 		}
+	}
+
+	/**
+	 * Rebuilds the grid from an existing .pack. Cells keep the pack's own map data,
+	 * so edits made in the main editor are preserved.
+	 */
+	private void openPack() {
+		File file = RetentionFileChooser.showOpenDialog(stage, FilterMode.PACK);
+		if (file == null || !file.exists())
+			return;
+		if (regions.isEmpty())
+			loadRegionList();
+		try {
+			ByteBuffer buffer = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
+			int count = buffer.getInt();
+			List<int[]> positions = new ArrayList<>();
+			List<RegionEntry> entries = new ArrayList<>();
+			int width = 1, length = 1;
+			for (int i = 0; i < count; i++) {
+				int objectId = buffer.getInt();
+				int landscapeId = buffer.getInt();
+				int x = buffer.getInt();
+				int y = buffer.getInt();
+				byte[] objects = new byte[buffer.getInt()];
+				buffer.get(objects);
+				byte[] tiles = new byte[buffer.getInt()];
+				buffer.get(tiles);
+				if (x < 0 || y < 0)
+					throw new IOException("Invalid region position " + x + "," + y);
+
+				positions.add(new int[] { x, y });
+				entries.add(new RegionEntry(packName(landscapeId), landscapeId, objectId, tiles, objects));
+				width = Math.max(width, x + 1);
+				length = Math.max(length, y + 1);
+			}
+
+			RegionEntry[][] loaded = new RegionEntry[width][length];
+			for (RegionEntry[] column : loaded)
+				Arrays.fill(column, RegionEntry.EMPTY);
+			for (int i = 0; i < entries.size(); i++)
+				loaded[positions.get(i)[0]][positions.get(i)[1]] = entries.get(i);
+
+			grid = loaded;
+			selectedX = 0;
+			selectedY = 0;
+			ensureSpinnerMax(widthSpinner, width);
+			ensureSpinnerMax(lengthSpinner, length);
+			widthSpinner.getValueFactory().setValue(width);
+			lengthSpinner.getValueFactory().setValue(length);
+			rebuildGrid();
+			statusLabel.setText("Opened " + file.getName() + " (" + count + " regions)");
+		} catch (IOException | RuntimeException ex) {
+			log.error("Failed to open pack", ex);
+			FXDialogs.showError(stage, "Error while loading map!", "There was an error while loading or parsing the selected file.");
+		}
+	}
+
+	private String packName(int landscapeId) {
+		if (landscapeId == -1)
+			return "Empty";
+		return regions.stream()
+				.filter(r -> !r.isEmpty() && r.landscapeId == landscapeId)
+				.map(r -> r.regionX() + "_" + r.regionY())
+				.findFirst()
+				.orElse("#" + landscapeId);
+	}
+
+	private static void ensureSpinnerMax(Spinner<Integer> spinner, int value) {
+		SpinnerValueFactory.IntegerSpinnerValueFactory factory = (SpinnerValueFactory.IntegerSpinnerValueFactory) spinner.getValueFactory();
+		if (factory.getMax() < value)
+			factory.setMax(value);
 	}
 
 	private void openInEditor() {
