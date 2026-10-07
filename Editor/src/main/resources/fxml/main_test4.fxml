@@ -137,6 +137,18 @@
                                           </Tooltip>
                                        </tooltip>
                                     </ToggleButton>
+                                    <ToggleButton fx:id="paintPathBtn" accessibleHelp="Paint Path" focusTraversable="false" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" prefHeight="30.0" prefWidth="30.0" text="P_P" toggleGroup="$toolGroup">
+                                       <font>
+                                          <Font name="JetBrains Mono Regular" size="8.0" />
+                                       </font>
+                                       <tooltip>
+                                          <Tooltip text="Paint Overlay Path (click points, Enter = apply, Esc = cancel, width = brush size)">
+                                             <font>
+                                                <Font name="JetBrains Mono Regular" size="13.0" />
+                                             </font>
+                                          </Tooltip>
+                                       </tooltip>
+                                    </ToggleButton>
                                  </children>
                                  <padding>
                                     <Insets top="12.0" />

@@ -28,6 +28,7 @@ import com.rspsi.util.FXDialogs;
 
 import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
+import javafx.beans.property.DoubleProperty;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
@@ -289,6 +290,9 @@ public class MainController {
     private ToggleButton paintOverlayBtn;
 
     @FXML
+    private ToggleButton paintPathBtn;
+
+    @FXML
     private ToggleButton paintUnderlayBtn;
 
 	@FXML
@@ -407,6 +411,9 @@ public class MainController {
 			Options.currentTool.set(ToolType.PAINT_OVERLAY);
 		}, paintOverlayBtn.selectedProperty());
 		ChangeListenerUtil.addListener(true, () -> {
+			Options.currentTool.set(ToolType.PAINT_PATH);
+		}, paintPathBtn.selectedProperty());
+		ChangeListenerUtil.addListener(true, () -> {
 			Options.currentTool.set(ToolType.PAINT_UNDERLAY);
 		}, paintUnderlayBtn.selectedProperty());
 		
@@ -482,8 +489,40 @@ public class MainController {
 			toolsTabPane.getTabs().add(i, tab);
 		}
 
+		toolsTabPane.getTabs().add(createPathTab());
 		toolsTabPane.getSelectionModel().select(SwatchType.OBJECT.getId());
 
+	}
+
+	/** Settings of the overlay path tool. */
+	private Tab createPathTab() {
+		VBox box = new VBox(10);
+		box.setPadding(new Insets(10));
+
+		CheckBox smoothCurve = new CheckBox("Smooth curve through points");
+		smoothCurve.selectedProperty().bindBidirectional(Options.pathSmoothCurve);
+
+		box.getChildren().addAll(
+				pathSlider("Width (tiles)", 1, 20, 0.5, Options.pathWidth),
+				smoothCurve,
+				pathSlider("Edge smoothing", 0, 4, 0.25, Options.pathEdgeSmoothing),
+				new Label("Click points in the scene, Enter = apply, Esc = cancel.\nThe overlay is taken from the Overlay tab."));
+
+		Tab tab = new Tab("Path");
+		tab.setContent(box);
+		return tab;
+	}
+
+	private VBox pathSlider(String name, double min, double max, double step, DoubleProperty property) {
+		Slider slider = new Slider(min, max, property.get());
+		slider.setBlockIncrement(step);
+		slider.setMajorTickUnit(step);
+		slider.setMinorTickCount(0);
+		slider.setSnapToTicks(true);
+		slider.valueProperty().bindBidirectional(property);
+		Label label = new Label();
+		label.textProperty().bind(javafx.beans.binding.Bindings.format(name + ": %.2f", property));
+		return new VBox(4, label, slider);
 	}
 
 	public void onLoad(MainWindow application) {
@@ -687,6 +726,8 @@ public class MainController {
 				this.selectTileBtn.setSelected(true);
 			} else if(newVal == ToolType.PAINT_OVERLAY) {
 				this.paintOverlayBtn.setSelected(true);
+			} else if(newVal == ToolType.PAINT_PATH) {
+				this.paintPathBtn.setSelected(true);
 			} else if(newVal == ToolType.PAINT_UNDERLAY) {
 				this.paintUnderlayBtn.setSelected(true);
 			}

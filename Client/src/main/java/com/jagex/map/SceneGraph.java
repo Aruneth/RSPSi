@@ -15,6 +15,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import com.rspsi.options.*;
+import com.rspsi.tools.PathOverlayFitter;
 import javafx.scene.input.KeyCode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D;
@@ -111,6 +112,9 @@ public class SceneGraph {
 	public static boolean ctrlDown;
 	public static boolean mouseWasDown;
 	public static boolean altDown;
+	/** Waypoints (tile centres) of the path being drawn with the path tool. */
+	private static final List<double[]> pathPoints = new ArrayList<>();
+	private static boolean pathClickLatch;
 	static boolean mouseIsDown;
 	static int anInt446;
 	static int currentCameraPlane;
@@ -311,6 +315,7 @@ public class SceneGraph {
 	public static void setMouseIsDown(boolean clicked) {
 		if (!clicked) {
 			commitChanges();
+			pathClickLatch = false;
 		}
 		if (SceneGraph.mouseIsDown && !clicked) {
 			SceneGraph.clickStartX = -1;
@@ -1736,6 +1741,16 @@ public class SceneGraph {
 							});
 
 
+				}
+				break;
+
+				case PAINT_PATH: {
+					this.resetTiles();
+					if (mouseIsDown && !pathClickLatch) {
+						pathClickLatch = true;
+						addPathPoint(tileX, tileY);
+					}
+					previewPath(plane, tileX, tileY);
 				}
 				break;
 
@@ -4944,6 +4959,71 @@ public class SceneGraph {
 			this.getMapRegion().underlays[plane][x][y] = (short) Options.underlayPaintId.get();
 			this.tiles[plane][x][y].hasUpdated = true;
 
+		});
+
+		getMapRegion().updateTiles();
+
+		SceneGraph.commitChanges();
+		Options.currentTool.set(currentTool);
+	}
+
+	private static void addPathPoint(int tileX, int tileY) {
+		double[] last = pathPoints.isEmpty() ? null : pathPoints.get(pathPoints.size() - 1);
+		if (last == null || last[0] != tileX + 0.5 || last[1] != tileY + 0.5)
+			pathPoints.add(new double[] { tileX + 0.5, tileY + 0.5 });
+	}
+
+
+	private Map<Integer, PathOverlayFitter.Fit> fitPath(int tileX, int tileY) {
+		List<double[]> points = new ArrayList<>(pathPoints);
+		if (tileX >= 0 && tileY >= 0)
+			points.add(new double[] { tileX + 0.5, tileY + 0.5 });
+		List<double[]> line = Options.pathSmoothCurve.get() ? PathOverlayFitter.smooth(points) : points;
+		return PathOverlayFitter.fit(line, Options.pathWidth.get(), width, length, Options.pathEdgeSmoothing.get());
+	}
+
+	private void previewPath(int plane, int tileX, int tileY) {
+		fitPath(tileX, tileY).forEach((key, fit) -> addTemporaryTile(plane, PathOverlayFitter.tileX(key),
+				PathOverlayFitter.tileY(key), fit.shape, fit.rotation, -1, 0, 9997965));
+	}
+
+	public static void cancelPath() {
+		pathPoints.clear();
+		onCycleEnd.add(() -> Client.getSingleton().sceneGraph.resetTiles());
+	}
+
+	/** Writes the drawn path to the map as overlay tiles; must run on the render cycle, see {@link #onCycleEnd}. */
+	public static void applyPath() {
+		onCycleEnd.add(() -> Client.getSingleton().sceneGraph.applyPathToMap());
+	}
+
+	private void applyPathToMap() {
+		int overlayId = Options.overlayPaintId.get();
+		if (pathPoints.isEmpty() || overlayId <= 0)
+			return;
+		int plane = Options.currentHeight.get();
+		Map<Integer, PathOverlayFitter.Fit> fits = fitPath(-1, -1);
+		pathPoints.clear();
+		this.resetTiles();
+
+		ToolType currentTool = Options.currentTool.get();
+		Options.currentTool.set(ToolType.PAINT_OVERLAY);
+		if (!this.currentStateCorrect()) {
+			initChanges();
+		}
+
+		fits.forEach((key, fit) -> {
+			int x = PathOverlayFitter.tileX(key);
+			int y = PathOverlayFitter.tileY(key);
+			if (currentState.isPresent()) {
+				OverlayState tileState = new OverlayState(x, y, plane);
+				tileState.preserve();
+				((TileChange<OverlayState>) currentState.get()).preserveTileState(tileState);
+			}
+			this.getMapRegion().overlays[plane][x][y] = (short) overlayId;
+			this.getMapRegion().overlayShapes[plane][x][y] = (byte) (fit.shape - 1);
+			this.getMapRegion().overlayOrientations[plane][x][y] = (byte) fit.rotation;
+			this.tiles[plane][x][y].hasUpdated = true;
 		});
 
 		getMapRegion().updateTiles();

@@ -485,6 +485,19 @@ public class MainWindow extends Application {
 			clientInstance.fullMapVisible.bind(fullMapView.visibleProperty());
 
 			primaryStage.addEventHandler(KeyEvent.ANY, gameKeyListener);
+			// Filter (capture phase) so Enter/Esc reach the path tool whichever control has focus
+			primaryStage.addEventFilter(KeyEvent.KEY_PRESSED, evt -> {
+				if (Options.currentTool.get() != ToolType.PAINT_PATH
+						|| primaryStage.getScene().getFocusOwner() instanceof javafx.scene.control.TextInputControl)
+					return;
+				if (evt.getCode() == javafx.scene.input.KeyCode.ENTER) {
+					SceneGraph.applyPath();
+					evt.consume();
+				} else if (evt.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+					SceneGraph.cancelPath();
+					evt.consume();
+				}
+			});
 			primaryStage.focusedProperty().addListener((observable, oldValue, newValue) -> {
 				if(!newValue){
 					log.info("Lost focus!");
