@@ -25,7 +25,7 @@ This repository is a fork with additional features, most notably the **Path tool
 - Copy flags, heights, overlays or underlays from one tile to a selection.
 - Set heights, flags, overlays and underlays on a whole selection in one action.
 - Import a prefab and export selected tiles to reuse them elsewhere.
-- Generate bridges, reset tile heights and force a map update.
+- Generate bridges (details below), reset tile heights and force a map update.
 
 ### Files and tools
 - Open a map by coordinates, by hash, from `.dat`/`.gz` files, from `.pack` files or from your cache; save back to the
@@ -127,6 +127,20 @@ Details:
 - Every stroke can be undone with undo (`Ctrl` + `Z`).
 - Other height actions are in the menu: *Copy heights from tile*, *Set heights to tiles* (for a whole selection),
   *Set Tile Height* and the bridge generator.
+
+## Bridge generator
+
+Builds a bridge over a stretch of the map, for example over a river or a ravine.
+
+1. Pick the height level the bridge crosses (the bridge is built on the level above, so at most level 2).
+2. With the select tile tool, select the tiles of the bridge deck.
+3. Choose *Generate bridge* in the menu and set the options:
+   - **Deck height**: automatic (the highest point under the deck) or a fixed height.
+   - **Ramp width**: the number of tiles around the deck over which the terrain slopes down to the ground. `0` gives a
+     hard edge.
+   - **Deck overlay id and shape**: what the deck looks like; id `0` keeps the overlay that is already there.
+   - **Bridge flag**: sets the bridge tile flag on the deck.
+4. Heights, overlays and flags are changed in one go, so a single `Ctrl` + `Z` undoes the whole bridge.
 
 ## Building
 

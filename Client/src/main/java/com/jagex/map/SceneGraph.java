@@ -15,6 +15,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import com.rspsi.options.*;
+import com.rspsi.tools.BridgeShaper;
 import com.rspsi.tools.CoastShaper;
 import com.rspsi.tools.MountainGenerator;
 import com.rspsi.tools.PathOverlayFitter;
@@ -5405,6 +5406,84 @@ public class SceneGraph {
 		this.updateHeights(minX - 3, minY - 3, maxX - minX + 3, maxY - minY + 3);
 		SceneGraph.commitChanges();
 		Options.currentTool.set(currentTool);
+	}
+
+	/**
+	 * Builds a bridge on the level above {@code lowerPlane}: a flat deck on the given tiles and a ramp around it. The
+	 * overlay is only touched when {@code overlayId} is above 0. Heights, overlays and flags are stored together as
+	 * one undo step.
+	 */
+	public void applyBridge(Set<Integer> deckTiles, int lowerPlane, BridgeShaper.Params params, int overlayId,
+			int overlayShape, boolean bridgeFlag) {
+		int plane = lowerPlane + 1;
+		BridgeShaper.Result bridge = BridgeShaper.shape(deckTiles, getMapRegion().tileHeights[lowerPlane],
+				getMapRegion().tileHeights[plane], params);
+		if (bridge.deck.isEmpty())
+			return;
+
+		ToolType currentTool = Options.currentTool.get();
+		Options.currentTool.set(ToolType.IMPORT_SELECTION);
+		try {
+			if (!this.currentStateCorrect()) {
+				initChanges();
+			}
+
+			Map<Integer, Integer> heights = new HashMap<>(bridge.ramp);
+			heights.putAll(bridge.deck);
+
+			for (int key : heights.keySet()) {
+				if (currentState.isPresent()) {
+					ImportTileState state = new ImportTileState(PathOverlayFitter.tileX(key), PathOverlayFitter.tileY(key), plane);
+					state.preserve();
+					((TileChange<ImportTileState>) currentState.get()).preserveTileState(state);
+				}
+			}
+
+			int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, maxX = 0, maxY = 0;
+			for (Map.Entry<Integer, Integer> entry : heights.entrySet()) {
+				int x = PathOverlayFitter.tileX(entry.getKey());
+				int y = PathOverlayFitter.tileY(entry.getKey());
+				minX = Math.min(minX, x);
+				minY = Math.min(minY, y);
+				maxX = Math.max(maxX, x);
+				maxY = Math.max(maxY, y);
+
+				getMapRegion().tileHeights[plane][x][y] = entry.getValue();
+				getMapRegion().manualTileHeight[plane][x][y] = 1;
+				for (int z = plane + 1; z < 4; z++) {
+					if (getMapRegion().tileHeights[z][x][y] > getMapRegion().tileHeights[z - 1][x][y])
+						getMapRegion().tileHeights[z][x][y] = getMapRegion().tileHeights[z - 1][x][y];
+				}
+
+				if (bridge.deck.containsKey(entry.getKey())) {
+					if (overlayId > 0) {
+						getMapRegion().overlays[plane][x][y] = (short) overlayId;
+						getMapRegion().overlayShapes[plane][x][y] = (byte) (overlayShape - 1);
+						getMapRegion().overlayOrientations[plane][x][y] = 0;
+					}
+					if (bridgeFlag)
+						getMapRegion().tileFlags[plane][x][y] |= RenderFlags.BRIDGE_TILE.getBit();
+				}
+
+				for (int tx = Math.max(x - 1, 0); tx <= x; tx++) {
+					for (int ty = Math.max(y - 1, 0); ty <= y; ty++) {
+						for (int z = 0; z < 4; z++) {
+							if (tiles[z][tx][ty] != null)
+								tiles[z][tx][ty].hasUpdated = true;
+						}
+					}
+				}
+			}
+
+			getMapRegion().setHeights();//For beyond edge updates
+			tileQueue.clear();
+			this.shadeObjects(64, -50, -10, -50, 768);
+			getMapRegion().updateTiles();
+			this.updateHeights(minX - 3, minY - 3, maxX - minX + 3, maxY - minY + 3);
+			SceneGraph.commitChanges();
+		} finally {
+			Options.currentTool.set(currentTool);
+		}
 	}
 
 	public void setTileOverlays(List<SceneTile> tiles) {
