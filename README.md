@@ -62,7 +62,10 @@ The Mountain tool raises the terrain into a hill, mountain or mountain range. Se
 the settings are in the **Mountain** tab on the right. The mountain is added on top of the existing terrain and fades
 out into it. The overlays and objects are not changed.
 
-- **Hill / mountain**: click the centre of the mountain. With tiles selected, press **Enter** to raise the selected
+- **Hill / mountain**: the **Footprint** grid in the tab shows the shape of the mountain. It starts with an uneven
+  suggestion; click or drag to colour squares, drag from a coloured square to erase (**New suggestion**, **Clear** and
+  **Fill** are next to it). The drawing is stretched over the radius. Click the centre of the mountain in the scene
+  to place it. With tiles selected, press **Enter** to raise the selected
   area instead (highest in the middle).
 - **Mountain range**: click points along the ridge, **Enter** applies it, **Esc** cancels it.
 - Settings: height, radius (or width of a range), steepness, foot blend, irregularity of the outline, roughness,

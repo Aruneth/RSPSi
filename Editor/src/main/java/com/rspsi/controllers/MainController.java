@@ -6,6 +6,10 @@ import java.util.stream.IntStream;
 import com.jfoenix.controls.JFXButton;
 import com.rspsi.util.Settings;
 import javafx.scene.control.*;
+import com.rspsi.tools.MountainGenerator;
+import javafx.scene.paint.Color;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.canvas.Canvas;
 import org.major.map.RenderFlags;
 
 import com.google.common.primitives.Doubles;
@@ -610,7 +614,11 @@ public class MainController {
 		VBox seed = section("Seed", seedLabel, newSeed,
 				hint("The same seed and settings always give the same mountain."));
 
-		box.getChildren().addAll(intro, mode, shape, looks, seed);
+		VBox footprint = createMountainShapeEditor();
+		footprint.visibleProperty().bind(Options.mountainRange.not());
+		footprint.managedProperty().bind(Options.mountainRange.not());
+
+		box.getChildren().addAll(intro, mode, footprint, shape, looks, seed);
 
 		ScrollPane scroll = new ScrollPane(box);
 		scroll.setFitToWidth(true);
@@ -619,6 +627,72 @@ public class MainController {
 		Tab tab = new Tab("Mountain");
 		tab.setContent(scroll);
 		return tab;
+	}
+
+	/**
+	 * Small grid in which the footprint of a hill is drawn: click or drag to colour cells, dragging from a coloured
+	 * cell removes. The grid is stretched over the radius, so a bigger radius gives a bigger version of the drawing.
+	 */
+	private VBox createMountainShapeEditor() {
+		final int grid = MountainGenerator.SHAPE_GRID;
+		final double cell = 11;
+		Canvas canvas = new Canvas(grid * cell, grid * cell);
+		Runnable redraw = () -> {
+			GraphicsContext g = canvas.getGraphicsContext2D();
+			g.setFill(Color.web("#262626"));
+			g.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+			for (int x = 0; x < grid; x++) {
+				for (int y = 0; y < grid; y++) {
+					g.setFill(Options.mountainShape[x][y] ? Color.web("#7a9e5c") : Color.web("#333333"));
+					g.fillRect(x * cell + 0.5, y * cell + 0.5, cell - 1, cell - 1);
+				}
+			}
+		};
+		redraw.run();
+
+		boolean[] paint = new boolean[1];
+		canvas.setOnMousePressed(evt -> {
+			int x = (int) (evt.getX() / cell), y = (int) (evt.getY() / cell);
+			if (x < 0 || y < 0 || x >= grid || y >= grid)
+				return;
+			paint[0] = !Options.mountainShape[x][y];
+			Options.mountainShape[x][y] = paint[0];
+			redraw.run();
+		});
+		canvas.setOnMouseDragged(evt -> {
+			int x = (int) (evt.getX() / cell), y = (int) (evt.getY() / cell);
+			if (x < 0 || y < 0 || x >= grid || y >= grid || Options.mountainShape[x][y] == paint[0])
+				return;
+			Options.mountainShape[x][y] = paint[0];
+			redraw.run();
+		});
+
+		Button suggest = new Button("New suggestion");
+		suggest.setOnAction(evt -> {
+			Options.mountainShape = MountainGenerator.suggestShape((long) (Math.random() * 1_000_000),
+					Options.mountainIrregularity.get());
+			redraw.run();
+		});
+		Button clear = new Button("Clear");
+		clear.setOnAction(evt -> {
+			Options.mountainShape = new boolean[grid][grid];
+			redraw.run();
+		});
+		Button fill = new Button("Fill");
+		fill.setOnAction(evt -> {
+			boolean[][] all = new boolean[grid][grid];
+			for (boolean[] column : all)
+				java.util.Arrays.fill(column, true);
+			Options.mountainShape = all;
+			redraw.run();
+		});
+		HBox buttons = new HBox(6, suggest, clear, fill);
+
+		return section("Footprint",
+				hint("Draw the outline of the mountain: click or drag to colour squares, drag from a coloured square "
+						+ "to erase. North is up. The drawing is stretched over the radius. \"New suggestion\" makes "
+						+ "a fresh uneven shape using the irregularity below."),
+				canvas, buttons);
 	}
 
 	private static Label hint(String text) {

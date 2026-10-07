@@ -104,4 +104,34 @@ class MountainGeneratorTest {
 		assertTrue(MountainGenerator.ridge(List.of(new double[] { 1, 1 }), p, 100, 100).isEmpty());
 		assertTrue(MountainGenerator.area(new HashSet<>(), p, 100, 100).isEmpty());
 	}
+
+	@Test
+	void suggestedShapeIsDeterministicAndNotACircle() {
+		boolean[][] shape = MountainGenerator.suggestShape(5, 0.6);
+		assertArrayEquals(shape, MountainGenerator.suggestShape(5, 0.6));
+		assertTrue(shape[MountainGenerator.SHAPE_GRID / 2][MountainGenerator.SHAPE_GRID / 2]);
+		int grid = MountainGenerator.SHAPE_GRID;
+		// a circle is symmetric left/right and top/bottom; the suggestion must not be
+		boolean symmetric = true;
+		for (int cx = 0; cx < grid; cx++)
+			for (int cy = 0; cy < grid; cy++)
+				symmetric &= shape[cx][cy] == shape[grid - 1 - cx][cy] && shape[cx][cy] == shape[cx][grid - 1 - cy];
+		assertFalse(symmetric);
+	}
+
+	@Test
+	void drawnShapeDecidesTheTiles() {
+		int grid = MountainGenerator.SHAPE_GRID;
+		boolean[][] shape = new boolean[grid][grid];
+		// only the top (north) half of the drawing is coloured
+		for (int cx = 0; cx < grid; cx++)
+			for (int cy = 0; cy < grid / 2; cy++)
+				shape[cx][cy] = true;
+		Set<Integer> tiles = MountainGenerator.shapeTiles(shape, 50, 50, 10, 100, 100);
+		assertTrue(tiles.contains(50 << 16 | 58), "north of the centre is covered");
+		assertFalse(tiles.contains(50 << 16 | 42), "south of the centre is not");
+		assertFalse(tiles.contains(50 << 16 | 70), "nothing outside the radius");
+		Map<Integer, Integer> hill = MountainGenerator.area(tiles, new MountainGenerator.Params(), 100, 100);
+		assertFalse(hill.isEmpty());
+	}
 }

@@ -5207,13 +5207,14 @@ public class SceneGraph {
 					marked.add(x << 16 | y);
 			}
 		} else {
-			double radius = Options.mountainSize.get();
-			int r = (int) Math.ceil(radius) + 1;
-			for (int x = Math.max(0, tileX - r); x <= Math.min(width - 1, tileX + r); x++) {
-				for (int y = Math.max(0, tileY - r); y <= Math.min(length - 1, tileY + r); y++) {
-					if (Math.abs(Math.hypot(x - tileX, y - tileY) - radius) < 0.7)
-						marked.add(x << 16 | y);
-				}
+			Set<Integer> footprint = MountainGenerator.shapeTiles(Options.mountainShape, tileX, tileY,
+					Options.mountainSize.get(), width - 1, length - 1);
+			// only the outline, to keep the preview cheap
+			for (int key : footprint) {
+				int x = PathOverlayFitter.tileX(key), y = PathOverlayFitter.tileY(key);
+				if (!footprint.contains((x + 1) << 16 | y) || !footprint.contains((x - 1) << 16 | y)
+						|| !footprint.contains(x << 16 | (y + 1)) || !footprint.contains(x << 16 | (y - 1)))
+					marked.add(key);
 			}
 			marked.add(tileX << 16 | tileY);
 		}
@@ -5232,7 +5233,10 @@ public class SceneGraph {
 	}
 
 	private void applyHill(int centerX, int centerY) {
-		applyMountainHeights(MountainGenerator.hill(centerX, centerY, mountainParams(), width - 1, length - 1));
+		MountainGenerator.Params params = mountainParams();
+		Set<Integer> footprint = MountainGenerator.shapeTiles(Options.mountainShape, centerX, centerY, params.size,
+				width - 1, length - 1);
+		applyMountainHeights(MountainGenerator.area(footprint, params, width - 1, length - 1));
 	}
 
 	private void applyMountainToMap() {

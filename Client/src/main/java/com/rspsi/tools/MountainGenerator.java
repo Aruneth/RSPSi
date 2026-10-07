@@ -57,6 +57,67 @@ public class MountainGenerator {
 		return out;
 	}
 
+	/** Cells per side of the hand drawn footprint of a hill. */
+	public static final int SHAPE_GRID = 21;
+
+	/**
+	 * A suggestion for the footprint of a hill: an uneven blob around the middle of the grid. {@code irregularity}
+	 * (0..1) decides how far the outline strays from a circle; the same seed gives the same blob.
+	 * Indexed {@code [column][row]}, row 0 is the top (north) of the picture.
+	 */
+	public static boolean[][] suggestShape(long seed, double irregularity) {
+		boolean[][] shape = new boolean[SHAPE_GRID][SHAPE_GRID];
+		double half = SHAPE_GRID / 2.0;
+		double amount = 0.15 + 0.6 * irregularity;
+		for (int x = 0; x < SHAPE_GRID; x++) {
+			for (int y = 0; y < SHAPE_GRID; y++) {
+				double dx = (x + 0.5 - half) / half, dy = (y + 0.5 - half) / half;
+				double distance = Math.hypot(dx, dy);
+				// a few big lobes plus smaller bumps around the outline
+				double edge = 0.62 + amount * (0.7 * fbm(x / 5.0 + 3.1, y / 5.0 + 7.7, 1, seed)
+						+ 0.3 * fbm(x / 2.5, y / 2.5, 1, seed + 17));
+				shape[x][y] = distance <= Math.min(0.95, edge);
+			}
+		}
+		shape[SHAPE_GRID / 2][SHAPE_GRID / 2] = true;
+		return shape;
+	}
+
+	/**
+	 * The tiles covered by a hand drawn footprint that is stretched over a square of {@code 2 * radius} tiles around
+	 * the centre. The edge of the drawing is smoothed so large radii do not get blocky outlines.
+	 */
+	public static Set<Integer> shapeTiles(boolean[][] shape, int centerX, int centerY, double radius, int mapWidth,
+	                                      int mapLength) {
+		Set<Integer> tiles = new java.util.HashSet<>();
+		int grid = shape.length;
+		int reach = (int) Math.ceil(radius);
+		for (int tx = Math.max(0, centerX - reach); tx <= Math.min(mapWidth, centerX + reach); tx++) {
+			for (int ty = Math.max(0, centerY - reach); ty <= Math.min(mapLength, centerY + reach); ty++) {
+				double u = (tx + 0.5 - (centerX + 0.5 - radius)) / (2 * radius) * grid - 0.5;
+				// north (higher y) is the top of the picture
+				double v = grid - 1 - ((ty + 0.5 - (centerY + 0.5 - radius)) / (2 * radius) * grid - 0.5);
+				if (sample(shape, u, v) >= 0.5)
+					tiles.add(tx << 16 | ty);
+			}
+		}
+		return tiles;
+	}
+
+	/** Bilinear value of the drawing at cell coordinates (cell centres lie on whole numbers). */
+	private static double sample(boolean[][] shape, double u, double v) {
+		int grid = shape.length;
+		int x0 = (int) Math.floor(u), y0 = (int) Math.floor(v);
+		double fx = u - x0, fy = v - y0;
+		double top = cell(shape, x0, y0, grid) * (1 - fx) + cell(shape, x0 + 1, y0, grid) * fx;
+		double bottom = cell(shape, x0, y0 + 1, grid) * (1 - fx) + cell(shape, x0 + 1, y0 + 1, grid) * fx;
+		return top * (1 - fy) + bottom * fy;
+	}
+
+	private static double cell(boolean[][] shape, int x, int y, int grid) {
+		return x >= 0 && y >= 0 && x < grid && y < grid && shape[x][y] ? 1 : 0;
+	}
+
 	/** A mountain range along the (already smoothed) {@code line}; {@link Params#size} is the width. */
 	public static Map<Integer, Integer> ridge(List<double[]> line, Params p, int mapWidth, int mapLength) {
 		Map<Integer, Integer> out = new HashMap<>();

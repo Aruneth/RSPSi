@@ -78,6 +78,8 @@ public class Options {
 	public static DoubleProperty mountainSteepness = new SimpleDoubleProperty(1.5);
 	public static DoubleProperty mountainPeakVariation = new SimpleDoubleProperty(0.5);
 	public static IntegerProperty mountainSeed = new SimpleIntegerProperty(1);
+	/** Hand drawn footprint of a hill, see MountainGenerator.suggestShape; [column][row], row 0 is the top. */
+	public static boolean[][] mountainShape = com.rspsi.tools.MountainGenerator.suggestShape(1, 0.4);
 	public static IntegerProperty underlayPaintId = new SimpleIntegerProperty(0);
 	public static ObjectProperty<BrushType> brushType = new SimpleObjectProperty<BrushType>(BrushType.RECTANGLE);
 	
