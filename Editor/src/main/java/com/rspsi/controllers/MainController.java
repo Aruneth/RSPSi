@@ -249,6 +249,8 @@ public class MainController {
 	@FXML
 	private TabPane toolsTabPane;
 
+	private Tab mountainTab;
+
 	@FXML
 	private MenuItem undoMenuItem;
 
@@ -294,6 +296,9 @@ public class MainController {
 
     @FXML
     private ToggleButton paintPathBtn;
+
+    @FXML
+    private ToggleButton mountainBtn;
 
     @FXML
     private VBox rightPanel;
@@ -420,6 +425,9 @@ public class MainController {
 			Options.currentTool.set(ToolType.PAINT_PATH);
 		}, paintPathBtn.selectedProperty());
 		ChangeListenerUtil.addListener(true, () -> {
+			Options.currentTool.set(ToolType.MOUNTAIN);
+		}, mountainBtn.selectedProperty());
+		ChangeListenerUtil.addListener(true, () -> {
 			Options.currentTool.set(ToolType.PAINT_UNDERLAY);
 		}, paintUnderlayBtn.selectedProperty());
 		
@@ -496,6 +504,8 @@ public class MainController {
 		}
 
 		toolsTabPane.getTabs().add(createPathTab());
+		mountainTab = createMountainTab();
+		toolsTabPane.getTabs().add(mountainTab);
 		toolsTabPane.getSelectionModel().select(SwatchType.OBJECT.getId());
 
 	}
@@ -544,6 +554,69 @@ public class MainController {
 		scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 		scroll.setPrefWidth(0);
 		Tab tab = new Tab("Path");
+		tab.setContent(scroll);
+		return tab;
+	}
+
+	/** Settings of the mountain generator. */
+	private Tab createMountainTab() {
+		VBox box = new VBox(14);
+		box.setPrefWidth(0);
+		box.setPadding(new Insets(10));
+
+		Label intro = hint("Pick the Mountain tool. Hill: click the centre of the mountain; with tiles selected, "
+				+ "press Enter to raise the selection instead. Range: click points along the ridge, Enter applies, "
+				+ "Esc cancels. The terrain is raised on top of what is already there; Ctrl+Z undoes it.");
+
+		ToggleGroup modes = new ToggleGroup();
+		RadioButton hill = new RadioButton("Hill / mountain");
+		RadioButton range = new RadioButton("Mountain range");
+		hill.setToggleGroup(modes);
+		range.setToggleGroup(modes);
+		range.setSelected(Options.mountainRange.get());
+		hill.setSelected(!Options.mountainRange.get());
+		range.selectedProperty().bindBidirectional(Options.mountainRange);
+		VBox mode = section("Type", hill, range);
+
+		VBox size = pathSlider("Radius", " tiles", 2, 60, 1, Options.mountainSize);
+		size.disableProperty().bind(Options.mountainRange);
+		VBox width = pathSlider("Width", " tiles", 2, 60, 1, Options.mountainSize);
+		width.disableProperty().bind(Options.mountainRange.not());
+		VBox peaks = pathSlider("Peak variation", "", 0, 1, 0.1, Options.mountainPeakVariation);
+		peaks.disableProperty().bind(Options.mountainRange.not());
+
+		VBox shape = section("Shape",
+				pathSlider("Height", " units", 50, 3000, 50, Options.mountainHeight),
+				hint("Height of the top. 128 units is one tile."),
+				size, width,
+				hint("Hill: radius of the mountain. Range: total width of the ridge."),
+				pathSlider("Steepness", "", 1, 4, 0.5, Options.mountainSteepness),
+				hint("1 is a gentle bell, higher gives steeper sides and a sharper top."),
+				pathSlider("Foot blend", " tiles", 0, 20, 1, Options.mountainBlend),
+				hint("Extra tiles around the mountain over which its foot fades into the surrounding terrain."));
+
+		VBox looks = section("Natural look",
+				pathSlider("Irregularity", "", 0, 1, 0.1, Options.mountainIrregularity),
+				hint("0 is a perfectly round outline, higher makes the outline uneven."),
+				pathSlider("Roughness", " octaves", 1, 6, 1, Options.mountainOctaves),
+				hint("1 is smooth, higher adds rocky detail on the slopes."),
+				peaks,
+				hint("Range only: how much the top height varies along the ridge, giving peaks and saddles."));
+
+		Button newSeed = new Button("New seed");
+		newSeed.setOnAction(evt -> Options.mountainSeed.set((int) (Math.random() * 1_000_000)));
+		Label seedLabel = new Label();
+		seedLabel.textProperty().bind(javafx.beans.binding.Bindings.format("Seed: %d", Options.mountainSeed));
+		VBox seed = section("Seed", seedLabel, newSeed,
+				hint("The same seed and settings always give the same mountain."));
+
+		box.getChildren().addAll(intro, mode, shape, looks, seed);
+
+		ScrollPane scroll = new ScrollPane(box);
+		scroll.setFitToWidth(true);
+		scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+		scroll.setPrefWidth(0);
+		Tab tab = new Tab("Mountain");
 		tab.setContent(scroll);
 		return tab;
 	}
@@ -805,6 +878,10 @@ public class MainController {
 				this.paintOverlayBtn.setSelected(true);
 			} else if(newVal == ToolType.PAINT_PATH) {
 				this.paintPathBtn.setSelected(true);
+			} else if(newVal == ToolType.MOUNTAIN) {
+				this.mountainBtn.setSelected(true);
+				if (mountainTab != null)
+					toolsTabPane.getSelectionModel().select(mountainTab);
 			} else if(newVal == ToolType.PAINT_UNDERLAY) {
 				this.paintUnderlayBtn.setSelected(true);
 			}

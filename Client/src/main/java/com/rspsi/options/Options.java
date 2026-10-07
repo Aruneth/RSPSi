@@ -68,6 +68,16 @@ public class Options {
 	public static DoubleProperty pathHeightSmoothing = new SimpleDoubleProperty(5);
 	/** How many tiles around the path are blended into the surrounding terrain when smoothing heights. */
 	public static DoubleProperty pathHeightBlend = new SimpleDoubleProperty(4);
+	/** Settings of the mountain generator. */
+	public static BooleanProperty mountainRange = new SimpleBooleanProperty(false);
+	public static DoubleProperty mountainHeight = new SimpleDoubleProperty(600);
+	public static DoubleProperty mountainSize = new SimpleDoubleProperty(12);
+	public static DoubleProperty mountainOctaves = new SimpleDoubleProperty(3);
+	public static DoubleProperty mountainIrregularity = new SimpleDoubleProperty(0.4);
+	public static DoubleProperty mountainBlend = new SimpleDoubleProperty(3);
+	public static DoubleProperty mountainSteepness = new SimpleDoubleProperty(1.5);
+	public static DoubleProperty mountainPeakVariation = new SimpleDoubleProperty(0.5);
+	public static IntegerProperty mountainSeed = new SimpleIntegerProperty(1);
 	public static IntegerProperty underlayPaintId = new SimpleIntegerProperty(0);
 	public static ObjectProperty<BrushType> brushType = new SimpleObjectProperty<BrushType>(BrushType.RECTANGLE);
 	

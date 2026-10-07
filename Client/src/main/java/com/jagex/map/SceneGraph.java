@@ -15,6 +15,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import com.rspsi.options.*;
+import com.rspsi.tools.MountainGenerator;
 import com.rspsi.tools.PathOverlayFitter;
 import javafx.scene.input.KeyCode;
 import lombok.extern.slf4j.Slf4j;
@@ -115,6 +116,8 @@ public class SceneGraph {
 	/** Waypoints (tile centres) of the path being drawn with the path tool. */
 	private static final List<double[]> pathPoints = new ArrayList<>();
 	private static boolean pathClickLatch;
+	/** Points of the mountain range being drawn with the mountain tool. */
+	private static final List<double[]> mountainPoints = new ArrayList<>();
 	static boolean mouseIsDown;
 	static int anInt446;
 	static int currentCameraPlane;
@@ -1741,6 +1744,23 @@ public class SceneGraph {
 							});
 
 
+				}
+				break;
+
+				case MOUNTAIN: {
+					this.resetTiles();
+					if (mouseIsDown && !pathClickLatch) {
+						pathClickLatch = true;
+						if (Options.mountainRange.get()) {
+							double[] last = mountainPoints.isEmpty() ? null : mountainPoints.get(mountainPoints.size() - 1);
+							if (last == null || last[0] != tileX || last[1] != tileY)
+								mountainPoints.add(new double[] { tileX, tileY });
+						} else {
+							final int centerX = tileX, centerY = tileY;
+							onCycleEnd.add(() -> Client.getSingleton().sceneGraph.applyHill(centerX, centerY));
+						}
+					}
+					previewMountain(plane, tileX, tileY);
 				}
 				break;
 
@@ -5126,6 +5146,152 @@ public class SceneGraph {
 			int y = PathOverlayFitter.tileY(key);
 			heights[x][y] = Math.min(heights[x][y], 0);
 			int diff = heights[x][y] - original[x][y];
+			getMapRegion().manualTileHeight[plane][x][y] = 1;
+			for (int z = plane + 1; z < 4; z++) {
+				getMapRegion().tileHeights[z][x][y] += diff;
+			}
+			for (int z = 1; z < 4; z++) {
+				if (getMapRegion().tileHeights[z][x][y] > getMapRegion().tileHeights[z - 1][x][y])
+					getMapRegion().tileHeights[z][x][y] = getMapRegion().tileHeights[z - 1][x][y];
+			}
+			for (int tx = Math.max(x - 1, 0); tx <= x; tx++) {
+				for (int ty = Math.max(y - 1, 0); ty <= y; ty++) {
+					for (int z = 0; z < 4; z++) {
+						if (tiles[z][tx][ty] != null)
+							tiles[z][tx][ty].hasUpdated = true;
+					}
+				}
+			}
+		}
+
+		getMapRegion().setHeights();//For beyond edge updates
+		tileQueue.clear();
+		this.shadeObjects(64, -50, -10, -50, 768);
+		getMapRegion().updateTiles();
+		this.updateHeights(minX - 3, minY - 3, maxX - minX + 3, maxY - minY + 3);
+		SceneGraph.commitChanges();
+		Options.currentTool.set(currentTool);
+	}
+
+	// ---- mountain generator ----
+
+	private static MountainGenerator.Params mountainParams() {
+		MountainGenerator.Params p = new MountainGenerator.Params();
+		p.height = Options.mountainHeight.get();
+		p.size = Options.mountainSize.get();
+		p.octaves = (int) Math.round(Options.mountainOctaves.get());
+		p.irregularity = Options.mountainIrregularity.get();
+		p.blend = Options.mountainBlend.get();
+		p.steepness = Options.mountainSteepness.get();
+		p.peakVariation = Options.mountainPeakVariation.get();
+		p.seed = Options.mountainSeed.get();
+		return p;
+	}
+
+	private List<double[]> mountainLine(int tileX, int tileY) {
+		List<double[]> points = new ArrayList<>(mountainPoints);
+		if (tileX >= 0 && tileY >= 0 && (points.isEmpty() || points.get(points.size() - 1)[0] != tileX
+				|| points.get(points.size() - 1)[1] != tileY))
+			points.add(new double[] { tileX, tileY });
+		return PathOverlayFitter.smooth(points);
+	}
+
+	/** Shows where the mountain will come: the centre line of a range, or the outline of a hill. */
+	private void previewMountain(int plane, int tileX, int tileY) {
+		Set<Integer> marked = new HashSet<>();
+		if (Options.mountainRange.get()) {
+			List<double[]> line = mountainLine(tileX, tileY);
+			for (double[] p : line) {
+				int x = (int) Math.floor(p[0]), y = (int) Math.floor(p[1]);
+				if (x >= 0 && y >= 0 && x < width && y < length)
+					marked.add(x << 16 | y);
+			}
+		} else {
+			double radius = Options.mountainSize.get();
+			int r = (int) Math.ceil(radius) + 1;
+			for (int x = Math.max(0, tileX - r); x <= Math.min(width - 1, tileX + r); x++) {
+				for (int y = Math.max(0, tileY - r); y <= Math.min(length - 1, tileY + r); y++) {
+					if (Math.abs(Math.hypot(x - tileX, y - tileY) - radius) < 0.7)
+						marked.add(x << 16 | y);
+				}
+			}
+			marked.add(tileX << 16 | tileY);
+		}
+		for (int key : marked)
+			addTemporaryTile(plane, PathOverlayFitter.tileX(key), PathOverlayFitter.tileY(key), 1, 0, -1, 0, 9997965);
+	}
+
+	public static void cancelMountain() {
+		mountainPoints.clear();
+		onCycleEnd.add(() -> Client.getSingleton().sceneGraph.resetTiles());
+	}
+
+	/** Enter: applies the range being drawn, or the hill on the selected tiles; runs on the render cycle. */
+	public static void applyMountain() {
+		onCycleEnd.add(() -> Client.getSingleton().sceneGraph.applyMountainToMap());
+	}
+
+	private void applyHill(int centerX, int centerY) {
+		applyMountainHeights(MountainGenerator.hill(centerX, centerY, mountainParams(), width - 1, length - 1));
+	}
+
+	private void applyMountainToMap() {
+		MountainGenerator.Params params = mountainParams();
+		if (Options.mountainRange.get()) {
+			List<double[]> line = mountainLine(-1, -1);
+			mountainPoints.clear();
+			this.resetTiles();
+			applyMountainHeights(MountainGenerator.ridge(line, params, width - 1, length - 1));
+		} else {
+			Set<Integer> selection = new HashSet<>();
+			for (SceneTile tile : getSelectedTiles())
+				selection.add(tile.positionX << 16 | tile.positionY);
+			this.resetTiles();
+			applyMountainHeights(MountainGenerator.area(selection, params, width - 1, length - 1));
+		}
+	}
+
+	/**
+	 * Adds the given height changes (negative = higher) on top of the current terrain of the selected height level
+	 * and shifts the levels above along, like the height tool. Stored as one undo step.
+	 */
+	private void applyMountainHeights(Map<Integer, Integer> changes) {
+		if (changes.isEmpty())
+			return;
+		int plane = Options.currentHeight.get();
+		int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, maxX = 0, maxY = 0;
+		for (int key : changes.keySet()) {
+			minX = Math.min(minX, PathOverlayFitter.tileX(key));
+			minY = Math.min(minY, PathOverlayFitter.tileY(key));
+			maxX = Math.max(maxX, PathOverlayFitter.tileX(key));
+			maxY = Math.max(maxY, PathOverlayFitter.tileY(key));
+		}
+
+		ToolType currentTool = Options.currentTool.get();
+		Options.currentTool.set(ToolType.MODIFY_HEIGHT);
+		if (!this.currentStateCorrect()) {
+			initChanges();
+		}
+
+		int[][] heights = getMapRegion().tileHeights[plane];
+		for (int key : changes.keySet()) {
+			int x = PathOverlayFitter.tileX(key);
+			int y = PathOverlayFitter.tileY(key);
+			if (currentState.isPresent()) {
+				for (int z = plane; z < 4; z++) {
+					HeightState state = new HeightState(x, y, z);
+					state.preserve();
+					((TileChange<HeightState>) currentState.get()).preserveTileState(state);
+				}
+			}
+		}
+
+		for (Map.Entry<Integer, Integer> change : changes.entrySet()) {
+			int x = PathOverlayFitter.tileX(change.getKey());
+			int y = PathOverlayFitter.tileY(change.getKey());
+			int before = heights[x][y];
+			heights[x][y] = Math.min(before + change.getValue(), 0);
+			int diff = heights[x][y] - before;
 			getMapRegion().manualTileHeight[plane][x][y] = 1;
 			for (int z = plane + 1; z < 4; z++) {
 				getMapRegion().tileHeights[z][x][y] += diff;

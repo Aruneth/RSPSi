@@ -487,14 +487,21 @@ public class MainWindow extends Application {
 			primaryStage.addEventHandler(KeyEvent.ANY, gameKeyListener);
 			// Filter (capture phase) so Enter/Esc reach the path tool whichever control has focus
 			primaryStage.addEventFilter(KeyEvent.KEY_PRESSED, evt -> {
-				if (Options.currentTool.get() != ToolType.PAINT_PATH
+				ToolType tool = Options.currentTool.get();
+				if ((tool != ToolType.PAINT_PATH && tool != ToolType.MOUNTAIN)
 						|| primaryStage.getScene().getFocusOwner() instanceof javafx.scene.control.TextInputControl)
 					return;
 				if (evt.getCode() == javafx.scene.input.KeyCode.ENTER) {
-					SceneGraph.applyPath();
+					if (tool == ToolType.MOUNTAIN)
+						SceneGraph.applyMountain();
+					else
+						SceneGraph.applyPath();
 					evt.consume();
 				} else if (evt.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
-					SceneGraph.cancelPath();
+					if (tool == ToolType.MOUNTAIN)
+						SceneGraph.cancelMountain();
+					else
+						SceneGraph.cancelPath();
 					evt.consume();
 				}
 			});
