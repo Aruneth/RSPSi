@@ -13,6 +13,7 @@ This repository is a fork with additional features, most notably the **Path tool
 - **Paint overlays and underlays** with an adjustable brush (size and shape: rectangle, circle, checker), all 13
   overlay shapes and rotation. Hold the modifier keys to remove an overlay or to only repaint the overlay colour.
 - **Path tool**: draw a path by clicking points and let RSPSi lay the overlay with matching shapes (details below).
+- **Coast tool**: draw a waterline and get a sea overlay with a beach or cliff along it (details below).
 - **Modify heights** with a brush, with optional smoothing, relative or absolute height, and multiple height levels.
 - **Tile flags**: set unwalkable, bridge, remove roof, render on z - 1 and disable render flags, with overlays to
   visualise them.
@@ -55,6 +56,28 @@ click the points of your path in the scene. A preview follows your mouse.
 - Painting the overlay and smoothing the height are separate undo steps.
 
 The width of the right hand panel can be changed by dragging its left edge.
+
+## Coast tool
+
+The Coast tool makes a shoreline: it lays a sea overlay and shapes the terrain along a line you draw. Pick the sea
+overlay in the Overlay tab first, then select the **CST** button in the toolbar; the settings are in the **Coast**
+tab on the right.
+
+1. Click points along the waterline in the scene. The preview shows the sea strip.
+2. Press **Enter** to apply it, or **Esc** to cancel.
+
+- **Sea side**: the sea lies on the left of the drawing direction. Untick *Sea on the left* if the sea ends up on
+  the wrong side.
+- **Beach**: the land slopes down smoothly to sea level (height 0) over *Beach width* tiles. Use a larger width on
+  high terrain, otherwise the slope stays steep.
+- **Cliff**: the land rises steeply from the waterline. *Cliff height* is how high the rock face climbs, *Cliff
+  width* how many tiles it spans (smaller is steeper). The extra height stays for *Plateau depth* tiles and then
+  fades back into the terrain.
+- **Sea width**: how far the sea overlay and the flat sea bed (height 0) reach from the waterline.
+- **Natural shoreline**: *Irregularity* makes the line meander with bays and headlands (0 follows your line
+  exactly), *Edge smoothing* makes the overlay edge flow better, and *New shoreline shape* picks another random
+  shape. The same settings always give the same shoreline.
+- The overlay and the heights are two separate undo steps. Heights are applied to the selected height level.
 
 ## Mountain tool
 

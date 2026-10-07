@@ -161,6 +161,18 @@
                                           </Tooltip>
                                        </tooltip>
                                     </ToggleButton>
+                                    <ToggleButton fx:id="coastBtn" accessibleHelp="Coast" focusTraversable="false" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" prefHeight="30.0" prefWidth="30.0" text="CST" toggleGroup="$toolGroup">
+                                       <font>
+                                          <Font name="JetBrains Mono Regular" size="8.0" />
+                                       </font>
+                                       <tooltip>
+                                          <Tooltip text="Coast (click points along the waterline, Enter = apply, Esc = cancel; beach or cliff in the Coast tab)">
+                                             <font>
+                                                <Font name="JetBrains Mono Regular" size="13.0" />
+                                             </font>
+                                          </Tooltip>
+                                       </tooltip>
+                                    </ToggleButton>
                                  </children>
                                  <padding>
                                     <Insets top="12.0" />
