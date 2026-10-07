@@ -56,6 +56,37 @@ click the points of your path in the scene. A preview follows your mouse.
 
 The width of the right hand panel can be changed by dragging its left edge.
 
+## Modify Height tool
+
+Select the **H_M** button in the toolbar and hold the left mouse button while moving over the terrain. The brush
+(size and shape from the brush settings) changes the height of every tile it touches, on the height level that is
+currently selected. What it does depends on the key you hold:
+
+| Keys            | Effect                                                                                   |
+|-----------------|------------------------------------------------------------------------------------------|
+| *(none)*        | **Raise** the terrain a little every time the brush updates; hold the button to keep raising. |
+| `Shift`         | **Lower** the terrain in the same way.                                                   |
+| `Ctrl`          | **Smooth**: every tile becomes the average of its 3x3 neighbours. Use it to even out bumps and steps. |
+| `Alt`           | **Set** the tile to the value of the *Tile Height* slider (see below).                   |
+| `Shift` + `Alt` | **Set** the tile to the *Tile Height* slider value, always measured from the ground (0). |
+
+Tips:
+- To flatten an area, use `Alt` (or `Shift` + `Alt`) with the same slider value on the whole area, then use `Ctrl`
+  on the edges.
+- To blend two regions of a different height, paint over the border between them with `Ctrl`. Every pass moves the
+  tiles closer to their neighbours, so move over the border several times, or use a bigger brush, for a gentler slope.
+- Ground can never go below 0; heights higher than the tile below are corrected for you.
+
+Details:
+- **Tile Height slider** (right hand panel): the height used by `Alt` and `Shift` + `Alt`.
+- **Absolute** checkbox: with `Alt` on a height level above 0, the slider value is added to the tile on the level
+  below (relative, the default) or measured from 0 (absolute). `Shift` + `Alt` is always absolute.
+- Changes apply to the selected height level and to all levels above it, so objects and floors stay aligned. The
+  levels above are also kept from dipping below the level underneath.
+- Every stroke can be undone with undo (`Ctrl` + `Z`).
+- Other height actions are in the menu: *Copy heights from tile*, *Set heights to tiles* (for a whole selection),
+  *Set Tile Height* and the bridge generator.
+
 ## Building
 
 RSPSi is a Gradle project and needs a JDK 21.
