@@ -77,6 +77,9 @@ public class Options {
 	public static DoubleProperty mountainBlend = new SimpleDoubleProperty(3);
 	public static DoubleProperty mountainSteepness = new SimpleDoubleProperty(1.5);
 	public static DoubleProperty mountainPeakVariation = new SimpleDoubleProperty(0.5);
+	public static BooleanProperty mountainCliff = new SimpleBooleanProperty(false);
+	public static DoubleProperty mountainCliffLevel = new SimpleDoubleProperty(0.6);
+	public static DoubleProperty mountainCliffWidth = new SimpleDoubleProperty(2);
 	public static IntegerProperty mountainSeed = new SimpleIntegerProperty(1);
 	/** Hand drawn footprint of a hill, see MountainGenerator.suggestShape; [column][row], row 0 is the top. */
 	public static boolean[][] mountainShape = com.rspsi.tools.MountainGenerator.suggestShape(1, 0.4);

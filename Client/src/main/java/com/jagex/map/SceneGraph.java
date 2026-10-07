@@ -5184,6 +5184,9 @@ public class SceneGraph {
 		p.blend = Options.mountainBlend.get();
 		p.steepness = Options.mountainSteepness.get();
 		p.peakVariation = Options.mountainPeakVariation.get();
+		p.cliff = Options.mountainCliff.get();
+		p.cliffLevel = Options.mountainCliffLevel.get();
+		p.cliffWidth = Options.mountainCliffWidth.get();
 		p.seed = Options.mountainSeed.get();
 		return p;
 	}

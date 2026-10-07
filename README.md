@@ -70,6 +70,8 @@ out into it. The overlays and objects are not changed.
 - **Mountain range**: click points along the ridge, **Enter** applies it, **Esc** cancels it.
 - Settings: height, radius (or width of a range), steepness, foot blend, irregularity of the outline, roughness,
   peak variation along a range and a seed. The same seed and settings give the same mountain.
+- **Cliff edge** (optional): a steep rock face along the edge, with a gentler slope above it. *Cliff height* is how much
+  of the total height the face climbs, *Cliff width* how many tiles it spans sideways (smaller is steeper).
 - One undo step per mountain.
 
 ## Modify Height tool

@@ -599,6 +599,20 @@ public class MainController {
 				pathSlider("Foot blend", " tiles", 0, 20, 1, Options.mountainBlend),
 				hint("Extra tiles around the mountain over which its foot fades into the surrounding terrain."));
 
+		CheckBox cliff = new CheckBox("Cliff edge");
+		cliff.selectedProperty().bindBidirectional(Options.mountainCliff);
+		VBox cliffLevel = pathSlider("Cliff height", " of the top", 0.1, 0.9, 0.1, Options.mountainCliffLevel);
+		cliffLevel.disableProperty().bind(Options.mountainCliff.not());
+		VBox cliffWidth = pathSlider("Cliff width", " tiles", 1, 8, 1, Options.mountainCliffWidth);
+		cliffWidth.disableProperty().bind(Options.mountainCliff.not());
+		VBox cliffs = section("Cliffs",
+				cliff,
+				hint("A steep rock face along the edge of the mountain, with a gentler slope above it up to the top."),
+				cliffLevel,
+				hint("How much of the total height the cliff face itself climbs."),
+				cliffWidth,
+				hint("How many tiles the cliff face spans sideways: smaller is steeper."));
+
 		VBox looks = section("Natural look",
 				pathSlider("Irregularity", "", 0, 1, 0.1, Options.mountainIrregularity),
 				hint("0 is a perfectly round outline, higher makes the outline uneven."),
@@ -618,7 +632,7 @@ public class MainController {
 		footprint.visibleProperty().bind(Options.mountainRange.not());
 		footprint.managedProperty().bind(Options.mountainRange.not());
 
-		box.getChildren().addAll(intro, mode, footprint, shape, looks, seed);
+		box.getChildren().addAll(intro, mode, footprint, shape, cliffs, looks, seed);
 
 		ScrollPane scroll = new ScrollPane(box);
 		scroll.setFitToWidth(true);

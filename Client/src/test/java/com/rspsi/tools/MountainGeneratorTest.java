@@ -134,4 +134,27 @@ class MountainGeneratorTest {
 		Map<Integer, Integer> hill = MountainGenerator.area(tiles, new MountainGenerator.Params(), 100, 100);
 		assertFalse(hill.isEmpty());
 	}
+
+	@Test
+	void cliffEdgeIsSteeperAtTheEdgeThanASmoothMountain() {
+		MountainGenerator.Params smooth = new MountainGenerator.Params();
+		MountainGenerator.Params cliff = new MountainGenerator.Params();
+		cliff.cliff = true;
+		cliff.cliffLevel = 0.6;
+		cliff.cliffWidth = 2;
+		assertTrue(maxStep(MountainGenerator.hill(50, 50, cliff, 100, 100))
+				> maxStep(MountainGenerator.hill(50, 50, smooth, 100, 100)));
+		for (int value : MountainGenerator.hill(50, 50, cliff, 100, 100).values())
+			assertTrue(-value <= cliff.height * 1.5);
+	}
+
+	private static int maxStep(Map<Integer, Integer> heights) {
+		int step = 0;
+		for (Map.Entry<Integer, Integer> e : heights.entrySet()) {
+			Integer next = heights.get(e.getKey() + (1 << 16));
+			if (next != null)
+				step = Math.max(step, Math.abs(next - e.getValue()));
+		}
+		return step;
+	}
 }

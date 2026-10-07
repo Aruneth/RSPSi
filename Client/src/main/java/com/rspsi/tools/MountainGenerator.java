@@ -28,6 +28,12 @@ public class MountainGenerator {
 		public double steepness = 1.5;
 		/** Only for ranges: how much the top height varies along the crest (0 = even). */
 		public double peakVariation = 0.5;
+		/** Steep rock face along the edge, with a gentler slope above it. */
+		public boolean cliff = false;
+		/** Part of the height (0..1) that is reached by the cliff face itself. */
+		public double cliffLevel = 0.6;
+		/** Horizontal width of the cliff face in tiles: the smaller, the steeper. */
+		public double cliffWidth = 2;
 		public long seed = 1;
 	}
 
@@ -51,7 +57,7 @@ public class MountainGenerator {
 				double distance = Math.hypot(x - centerX, y - centerY);
 				double outline = fbm(x / OUTLINE_SCALE, y / OUTLINE_SCALE, 2, p.seed);
 				double warped = distance / Math.max(0.3, 1 + 0.6 * p.irregularity * outline);
-				put(out, x, y, p, warped / reach, 1, mapWidth, mapLength);
+				put(out, x, y, p, warped / reach, reach, 1, mapWidth, mapLength);
 			}
 		}
 		return out;
@@ -143,7 +149,7 @@ public class MountainGenerator {
 				// tops and saddles along the crest, taken at the closest point of the line
 				double crest = fbm(nearest[0] / CREST_SCALE, nearest[1] / CREST_SCALE, 2, p.seed + 7919);
 				double peak = Math.max(0.15, 1 + p.peakVariation * crest);
-				put(out, x, y, p, warped / reach, peak, mapWidth, mapLength);
+				put(out, x, y, p, warped / reach, reach, peak, mapWidth, mapLength);
 			}
 		}
 		return out;
@@ -193,7 +199,7 @@ public class MountainGenerator {
 				double outline = fbm(vx / OUTLINE_SCALE, vy / OUTLINE_SCALE, 2, p.seed);
 				signed += p.irregularity * outline * Math.min(deepest, 4);
 				// 0 at the outer edge of the foot, 1 in the deepest part of the area
-				put(out, vx, vy, p, 1 - (signed + p.blend) / reach, 1, mapWidth, mapLength);
+				put(out, vx, vy, p, 1 - (signed + p.blend) / reach, reach, 1, mapWidth, mapLength);
 			}
 		}
 		return out;
@@ -201,14 +207,26 @@ public class MountainGenerator {
 
 	/**
 	 * @param t     0 at the top, 1 and above outside the footprint
+	 * @param reach distance in tiles from the top to the outer edge of the foot
 	 * @param scale extra factor for the top height (range crest variation)
 	 */
-	private static void put(Map<Integer, Integer> out, int x, int y, Params p, double t, double scale, int mapWidth,
-	                        int mapLength) {
+	private static void put(Map<Integer, Integer> out, int x, int y, Params p, double t, double reach, double scale,
+	                        int mapWidth, int mapLength) {
 		if (x < 0 || y < 0 || x > mapWidth || y > mapLength || t >= 1)
 			return;
 		double s = 1 - Math.max(0, t);
 		double profile = Math.pow(s * s * (3 - 2 * s), p.steepness);
+		if (p.cliff) {
+			// s runs from 0 at the foot to 1 at the top; the face takes the first part of it
+			double face = Math.min(0.95, Math.max(0.02, p.cliffWidth / reach));
+			if (s < face) {
+				double u = s / face;
+				profile = p.cliffLevel * Math.pow(u * u * (3 - 2 * u), 0.7);
+			} else {
+				double u = (s - face) / (1 - face);
+				profile = p.cliffLevel + (1 - p.cliffLevel) * Math.pow(u * u * (3 - 2 * u), p.steepness);
+			}
+		}
 		double detail = 1;
 		if (p.octaves > 1) {
 			// rocky detail, strongest on the slopes and fading to nothing at the foot and the top
