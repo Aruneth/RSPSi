@@ -28,7 +28,10 @@ import com.rspsi.util.FXDialogs;
 
 import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
+import javafx.beans.property.DoubleProperty;
 import javafx.geometry.HPos;
+import javafx.scene.Cursor;
+import javafx.scene.Node;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -41,6 +44,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.util.converter.IntegerStringConverter;
 import lombok.Getter;
 
@@ -289,6 +293,12 @@ public class MainController {
     private ToggleButton paintOverlayBtn;
 
     @FXML
+    private ToggleButton paintPathBtn;
+
+    @FXML
+    private VBox rightPanel;
+
+    @FXML
     private ToggleButton paintUnderlayBtn;
 
 	@FXML
@@ -407,6 +417,9 @@ public class MainController {
 			Options.currentTool.set(ToolType.PAINT_OVERLAY);
 		}, paintOverlayBtn.selectedProperty());
 		ChangeListenerUtil.addListener(true, () -> {
+			Options.currentTool.set(ToolType.PAINT_PATH);
+		}, paintPathBtn.selectedProperty());
+		ChangeListenerUtil.addListener(true, () -> {
 			Options.currentTool.set(ToolType.PAINT_UNDERLAY);
 		}, paintUnderlayBtn.selectedProperty());
 		
@@ -482,12 +495,115 @@ public class MainController {
 			toolsTabPane.getTabs().add(i, tab);
 		}
 
+		toolsTabPane.getTabs().add(createPathTab());
 		toolsTabPane.getSelectionModel().select(SwatchType.OBJECT.getId());
 
 	}
 
+	/** Settings of the overlay path tool. */
+	private Tab createPathTab() {
+		VBox box = new VBox(14);
+		box.setPrefWidth(0); // follow the width of the panel instead of the length of the texts
+		box.setPadding(new Insets(10));
+
+		Label intro = hint("Draw a path with the Path tool: click points in the scene, press Enter to apply it "
+				+ "or Esc to cancel. The overlay is taken from the Overlay tab.");
+
+		// Shape
+		CheckBox smoothCurve = new CheckBox("Smooth curve");
+		smoothCurve.selectedProperty().bindBidirectional(Options.pathSmoothCurve);
+		VBox shape = section("Shape",
+				pathSlider("Width", " tiles", 1, 20, 0.5, Options.pathWidth),
+				hint("How wide the path is. 1 is a single tile."),
+				smoothCurve,
+				hint("On: the path flows as a smooth curve through your points. Off: straight lines between points."),
+				pathSlider("Edge smoothing", "", 0, 4, 0.5, Options.pathEdgeSmoothing),
+				hint("Makes the shapes of neighbouring tiles line up on their edges. Higher gives a cleaner outline, "
+						+ "0 fits every tile on its own."));
+
+		// Terrain
+		CheckBox smoothHeight = new CheckBox("Smooth terrain height");
+		smoothHeight.selectedProperty().bindBidirectional(Options.pathSmoothHeight);
+		VBox heightStrength = pathSlider("Height smoothing", " passes", 1, 250, 1, Options.pathHeightSmoothing);
+		heightStrength.disableProperty().bind(Options.pathSmoothHeight.not());
+		VBox heightBlend = pathSlider("Blend distance", " tiles", 0, 30, 1, Options.pathHeightBlend);
+		heightBlend.disableProperty().bind(Options.pathSmoothHeight.not());
+		VBox terrain = section("Terrain",
+				smoothHeight,
+				hint("Evens out the height under the path so it has no steep steps. Applied together with the path "
+						+ "and undone separately (press Ctrl+Z twice)."),
+				heightStrength,
+				hint("Number of smoothing passes (1-250). Higher values flatten the terrain more along the path; start low and increase if it is still too steep."),
+				heightBlend,
+				hint("How many tiles around the path are blended into the surrounding terrain. Use a larger distance on steep hillsides so the slope next to the path becomes gradual instead of a sudden wall."));
+
+		box.getChildren().addAll(intro, shape, terrain);
+
+		ScrollPane scroll = new ScrollPane(box);
+		scroll.setFitToWidth(true);
+		scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+		scroll.setPrefWidth(0);
+		Tab tab = new Tab("Path");
+		tab.setContent(scroll);
+		return tab;
+	}
+
+	private static Label hint(String text) {
+		Label label = new Label(text);
+		label.setWrapText(true);
+		label.setOpacity(0.7);
+		label.setStyle("-fx-font-size: 11px;");
+		return label;
+	}
+
+	private static VBox section(String title, Node... children) {
+		Label header = new Label(title);
+		header.setStyle("-fx-font-weight: bold;");
+		VBox box = new VBox(6, header);
+		box.getChildren().addAll(children);
+		return box;
+	}
+
+	/** A slider that always moves in fixed steps and shows its current value. */
+	private static VBox pathSlider(String name, String unit, double min, double max, double step,
+	                               DoubleProperty property) {
+		Slider slider = new Slider(min, max, property.get());
+		slider.setBlockIncrement(step);
+		slider.setMajorTickUnit(step);
+		slider.setMinorTickCount(0);
+		slider.setSnapToTicks(true);
+		slider.valueProperty().bindBidirectional(property);
+		Label label = new Label();
+		String format = step >= 1 ? "%.0f" : "%.1f";
+		label.textProperty().bind(javafx.beans.binding.Bindings.format(name + ": " + format + unit, property));
+		return new VBox(4, label, slider);
+	}
+
+
+	/** Lets the user drag the left edge of the right hand tab panel to change its width (default 300px). */
+	private void initRightPanelResize() {
+		Pane parent = (Pane) rightPanel.getParent();
+		Region handle = new Region();
+		handle.setPrefWidth(5);
+		handle.setMinWidth(5);
+		handle.setMaxWidth(5);
+		handle.setCursor(Cursor.H_RESIZE);
+		handle.setStyle("-fx-background-color: rgba(128, 128, 128, 0.25);");
+		double[] drag = new double[2];
+		handle.setOnMousePressed(evt -> {
+			drag[0] = evt.getScreenX();
+			drag[1] = rightPanel.getWidth();
+		});
+		handle.setOnMouseDragged(evt -> {
+			double width = drag[1] - (evt.getScreenX() - drag[0]);
+			rightPanel.setPrefWidth(Math.max(250, Math.min(900, width)));
+		});
+		parent.getChildren().add(parent.getChildren().indexOf(rightPanel), handle);
+	}
+
 	public void onLoad(MainWindow application) {
 		initializeToolButtons();
+		initRightPanelResize();
 		loadTabs(application);
 
 		ChangeListenerUtil.addListener(() -> this.tileHeightTextBox.setText(this.heightLevelSlider.getValue() + ""),
@@ -687,6 +803,8 @@ public class MainController {
 				this.selectTileBtn.setSelected(true);
 			} else if(newVal == ToolType.PAINT_OVERLAY) {
 				this.paintOverlayBtn.setSelected(true);
+			} else if(newVal == ToolType.PAINT_PATH) {
+				this.paintPathBtn.setSelected(true);
 			} else if(newVal == ToolType.PAINT_UNDERLAY) {
 				this.paintUnderlayBtn.setSelected(true);
 			}

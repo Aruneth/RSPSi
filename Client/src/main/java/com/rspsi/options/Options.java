@@ -10,9 +10,11 @@ import com.rspsi.core.misc.BrushType;
 import com.rspsi.core.misc.ToolType;
 
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 
@@ -58,6 +60,14 @@ public class Options {
 
 	public static IntegerProperty overlayPaintId = new SimpleIntegerProperty(0);
 	public static IntegerProperty overlayPaintShapeId = new SimpleIntegerProperty(1);
+	/** Settings of the overlay path tool. */
+	public static DoubleProperty pathWidth = new SimpleDoubleProperty(3);
+	public static BooleanProperty pathSmoothCurve = new SimpleBooleanProperty(true);
+	public static DoubleProperty pathEdgeSmoothing = new SimpleDoubleProperty(1.5);
+	public static BooleanProperty pathSmoothHeight = new SimpleBooleanProperty(false);
+	public static DoubleProperty pathHeightSmoothing = new SimpleDoubleProperty(5);
+	/** How many tiles around the path are blended into the surrounding terrain when smoothing heights. */
+	public static DoubleProperty pathHeightBlend = new SimpleDoubleProperty(4);
 	public static IntegerProperty underlayPaintId = new SimpleIntegerProperty(0);
 	public static ObjectProperty<BrushType> brushType = new SimpleObjectProperty<BrushType>(BrushType.RECTANGLE);
 	
