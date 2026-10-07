@@ -6,6 +6,10 @@ import java.util.stream.IntStream;
 import com.jfoenix.controls.JFXButton;
 import com.rspsi.util.Settings;
 import javafx.scene.control.*;
+import com.rspsi.tools.MountainGenerator;
+import javafx.scene.paint.Color;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.canvas.Canvas;
 import org.major.map.RenderFlags;
 
 import com.google.common.primitives.Doubles;
@@ -249,6 +253,8 @@ public class MainController {
 	@FXML
 	private TabPane toolsTabPane;
 
+	private Tab mountainTab;
+
 	@FXML
 	private MenuItem undoMenuItem;
 
@@ -294,6 +300,9 @@ public class MainController {
 
     @FXML
     private ToggleButton paintPathBtn;
+
+    @FXML
+    private ToggleButton mountainBtn;
 
     @FXML
     private VBox rightPanel;
@@ -420,6 +429,9 @@ public class MainController {
 			Options.currentTool.set(ToolType.PAINT_PATH);
 		}, paintPathBtn.selectedProperty());
 		ChangeListenerUtil.addListener(true, () -> {
+			Options.currentTool.set(ToolType.MOUNTAIN);
+		}, mountainBtn.selectedProperty());
+		ChangeListenerUtil.addListener(true, () -> {
 			Options.currentTool.set(ToolType.PAINT_UNDERLAY);
 		}, paintUnderlayBtn.selectedProperty());
 		
@@ -496,6 +508,8 @@ public class MainController {
 		}
 
 		toolsTabPane.getTabs().add(createPathTab());
+		mountainTab = createMountainTab();
+		toolsTabPane.getTabs().add(mountainTab);
 		toolsTabPane.getSelectionModel().select(SwatchType.OBJECT.getId());
 
 	}
@@ -546,6 +560,153 @@ public class MainController {
 		Tab tab = new Tab("Path");
 		tab.setContent(scroll);
 		return tab;
+	}
+
+	/** Settings of the mountain generator. */
+	private Tab createMountainTab() {
+		VBox box = new VBox(14);
+		box.setPrefWidth(0);
+		box.setPadding(new Insets(10));
+
+		Label intro = hint("Pick the Mountain tool. Hill: click the centre of the mountain; with tiles selected, "
+				+ "press Enter to raise the selection instead. Range: click points along the ridge, Enter applies, "
+				+ "Esc cancels. The terrain is raised on top of what is already there; Ctrl+Z undoes it.");
+
+		ToggleGroup modes = new ToggleGroup();
+		RadioButton hill = new RadioButton("Hill / mountain");
+		RadioButton range = new RadioButton("Mountain range");
+		hill.setToggleGroup(modes);
+		range.setToggleGroup(modes);
+		range.setSelected(Options.mountainRange.get());
+		hill.setSelected(!Options.mountainRange.get());
+		range.selectedProperty().bindBidirectional(Options.mountainRange);
+		VBox mode = section("Type", hill, range);
+
+		VBox size = pathSlider("Radius", " tiles", 2, 60, 1, Options.mountainSize);
+		size.disableProperty().bind(Options.mountainRange);
+		VBox width = pathSlider("Width", " tiles", 2, 60, 1, Options.mountainSize);
+		width.disableProperty().bind(Options.mountainRange.not());
+		VBox peaks = pathSlider("Peak variation", "", 0, 1, 0.1, Options.mountainPeakVariation);
+		peaks.disableProperty().bind(Options.mountainRange.not());
+
+		VBox shape = section("Shape",
+				pathSlider("Height", " units", 50, 3000, 50, Options.mountainHeight),
+				hint("Height of the top. 128 units is one tile."),
+				size, width,
+				hint("Hill: radius of the mountain. Range: total width of the ridge."),
+				pathSlider("Steepness", "", 1, 4, 0.5, Options.mountainSteepness),
+				hint("1 is a gentle bell, higher gives steeper sides and a sharper top."),
+				pathSlider("Foot blend", " tiles", 0, 20, 1, Options.mountainBlend),
+				hint("Extra tiles around the mountain over which its foot fades into the surrounding terrain."));
+
+		CheckBox cliff = new CheckBox("Cliff edge");
+		cliff.selectedProperty().bindBidirectional(Options.mountainCliff);
+		VBox cliffLevel = pathSlider("Cliff height", " of the top", 0.1, 0.9, 0.1, Options.mountainCliffLevel);
+		cliffLevel.disableProperty().bind(Options.mountainCliff.not());
+		VBox cliffWidth = pathSlider("Cliff width", " tiles", 1, 8, 1, Options.mountainCliffWidth);
+		cliffWidth.disableProperty().bind(Options.mountainCliff.not());
+		VBox cliffs = section("Cliffs",
+				cliff,
+				hint("A steep rock face along the edge of the mountain, with a gentler slope above it up to the top."),
+				cliffLevel,
+				hint("How much of the total height the cliff face itself climbs."),
+				cliffWidth,
+				hint("How many tiles the cliff face spans sideways: smaller is steeper."));
+
+		VBox looks = section("Natural look",
+				pathSlider("Irregularity", "", 0, 1, 0.1, Options.mountainIrregularity),
+				hint("0 is a perfectly round outline, higher makes the outline uneven."),
+				pathSlider("Roughness", " octaves", 1, 6, 1, Options.mountainOctaves),
+				hint("1 is smooth, higher adds rocky detail on the slopes."),
+				peaks,
+				hint("Range only: how much the top height varies along the ridge, giving peaks and saddles."));
+
+		Button newSeed = new Button("New seed");
+		newSeed.setOnAction(evt -> Options.mountainSeed.set((int) (Math.random() * 1_000_000)));
+		Label seedLabel = new Label();
+		seedLabel.textProperty().bind(javafx.beans.binding.Bindings.format("Seed: %d", Options.mountainSeed));
+		VBox seed = section("Seed", seedLabel, newSeed,
+				hint("The same seed and settings always give the same mountain."));
+
+		VBox footprint = createMountainShapeEditor();
+		footprint.visibleProperty().bind(Options.mountainRange.not());
+		footprint.managedProperty().bind(Options.mountainRange.not());
+
+		box.getChildren().addAll(intro, mode, footprint, shape, cliffs, looks, seed);
+
+		ScrollPane scroll = new ScrollPane(box);
+		scroll.setFitToWidth(true);
+		scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+		scroll.setPrefWidth(0);
+		Tab tab = new Tab("Mountain");
+		tab.setContent(scroll);
+		return tab;
+	}
+
+	/**
+	 * Small grid in which the footprint of a hill is drawn: click or drag to colour cells, dragging from a coloured
+	 * cell removes. The grid is stretched over the radius, so a bigger radius gives a bigger version of the drawing.
+	 */
+	private VBox createMountainShapeEditor() {
+		final int grid = MountainGenerator.SHAPE_GRID;
+		final double cell = 11;
+		Canvas canvas = new Canvas(grid * cell, grid * cell);
+		Runnable redraw = () -> {
+			GraphicsContext g = canvas.getGraphicsContext2D();
+			g.setFill(Color.web("#262626"));
+			g.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+			for (int x = 0; x < grid; x++) {
+				for (int y = 0; y < grid; y++) {
+					g.setFill(Options.mountainShape[x][y] ? Color.web("#7a9e5c") : Color.web("#333333"));
+					g.fillRect(x * cell + 0.5, y * cell + 0.5, cell - 1, cell - 1);
+				}
+			}
+		};
+		redraw.run();
+
+		boolean[] paint = new boolean[1];
+		canvas.setOnMousePressed(evt -> {
+			int x = (int) (evt.getX() / cell), y = (int) (evt.getY() / cell);
+			if (x < 0 || y < 0 || x >= grid || y >= grid)
+				return;
+			paint[0] = !Options.mountainShape[x][y];
+			Options.mountainShape[x][y] = paint[0];
+			redraw.run();
+		});
+		canvas.setOnMouseDragged(evt -> {
+			int x = (int) (evt.getX() / cell), y = (int) (evt.getY() / cell);
+			if (x < 0 || y < 0 || x >= grid || y >= grid || Options.mountainShape[x][y] == paint[0])
+				return;
+			Options.mountainShape[x][y] = paint[0];
+			redraw.run();
+		});
+
+		Button suggest = new Button("New suggestion");
+		suggest.setOnAction(evt -> {
+			Options.mountainShape = MountainGenerator.suggestShape((long) (Math.random() * 1_000_000),
+					Options.mountainIrregularity.get());
+			redraw.run();
+		});
+		Button clear = new Button("Clear");
+		clear.setOnAction(evt -> {
+			Options.mountainShape = new boolean[grid][grid];
+			redraw.run();
+		});
+		Button fill = new Button("Fill");
+		fill.setOnAction(evt -> {
+			boolean[][] all = new boolean[grid][grid];
+			for (boolean[] column : all)
+				java.util.Arrays.fill(column, true);
+			Options.mountainShape = all;
+			redraw.run();
+		});
+		HBox buttons = new HBox(6, suggest, clear, fill);
+
+		return section("Footprint",
+				hint("Draw the outline of the mountain: click or drag to colour squares, drag from a coloured square "
+						+ "to erase. North is up. The drawing is stretched over the radius. \"New suggestion\" makes "
+						+ "a fresh uneven shape using the irregularity below."),
+				canvas, buttons);
 	}
 
 	private static Label hint(String text) {
@@ -805,6 +966,10 @@ public class MainController {
 				this.paintOverlayBtn.setSelected(true);
 			} else if(newVal == ToolType.PAINT_PATH) {
 				this.paintPathBtn.setSelected(true);
+			} else if(newVal == ToolType.MOUNTAIN) {
+				this.mountainBtn.setSelected(true);
+				if (mountainTab != null)
+					toolsTabPane.getSelectionModel().select(mountainTab);
 			} else if(newVal == ToolType.PAINT_UNDERLAY) {
 				this.paintUnderlayBtn.setSelected(true);
 			}
