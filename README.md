@@ -25,7 +25,7 @@ This repository is a fork with additional features, most notably the **Path tool
 - Copy flags, heights, overlays or underlays from one tile to a selection.
 - Set heights, flags, overlays and underlays on a whole selection in one action.
 - Import a prefab and export selected tiles to reuse them elsewhere.
-- Generate bridges (details below), reset tile heights and force a map update.
+- Draw bridges with the bridge tool (details below), reset tile heights and force a map update.
 
 ### Files and tools
 - Open a map by coordinates, by hash, from `.dat`/`.gz` files, from `.pack` files or from your cache; save back to the
@@ -126,7 +126,7 @@ Details:
   levels above are also kept from dipping below the level underneath.
 - Every stroke can be undone with undo (`Ctrl` + `Z`).
 - Other height actions are in the menu: *Copy heights from tile*, *Set heights to tiles* (for a whole selection),
-  *Set Tile Height* and the bridge generator.
+  *Set Tile Height*.
 
 ## Bridge tool
 
@@ -146,15 +146,7 @@ above the current height level, so the current level can be at most 2.
    - **Ramp width**: how many corners around the deck the terrain slopes down to the ground; `0` gives a hard edge.
    - **Bridge flag**: sets the bridge tile flag on the deck.
 
-**From a selection (menu: *Generate bridge*)**
-1. With the select tile tool, select the tiles of the bridge deck.
-2. Choose *Generate bridge* in the menu and set the options:
-   - **Deck height**: automatic (a flat deck at the highest point under it) or a fixed height.
-   - **Ramp width**: the number of tiles around the deck over which the terrain slopes down to the ground. `0` gives a
-     hard edge.
-   - **Deck overlay id and shape**: what the deck looks like; id `0` keeps the overlay that is already there.
-   - **Bridge flag**: sets the bridge tile flag on the deck.
-4. Heights, overlays and flags are changed in one go, so a single `Ctrl` + `Z` undoes the whole bridge.
+Heights, overlays and flags are changed in one go, so a single `Ctrl` + `Z` undoes the whole bridge.
 
 ## Building
 

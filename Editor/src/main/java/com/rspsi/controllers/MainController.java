@@ -25,8 +25,6 @@ import com.rspsi.core.misc.BrushType;
 import com.rspsi.core.misc.ToolType;
 import com.rspsi.options.Options;
 import com.rspsi.swatches.SwatchType;
-import com.rspsi.tools.BridgeBuilder;
-import com.rspsi.tools.BridgeShaper;
 import com.rspsi.util.AlwaysSelectToggleGroup;
 import com.rspsi.util.ChangeListenerUtil;
 import com.rspsi.util.FXDialogs;
@@ -394,9 +392,6 @@ public class MainController {
 
 	@FXML
 	private MenuItem setRelativeHeight;
-	
-	@FXML
-	private MenuItem generateBridgeBtn;
 	
 	@FXML
 	private VBox root;
@@ -1031,8 +1026,6 @@ public class MainController {
 
 		Options.simulateBridgesProperty.bindBidirectional(simulateBridges.selectedProperty());
 		
-		generateBridgeBtn.setOnAction(evt -> showBridgeDialog(application));
-
 		Options.currentTool.addListener((observable, oldVal, newVal) -> {
 
 			deselectTools();
@@ -1095,65 +1088,6 @@ public class MainController {
 				evt -> SceneGraph.onCycleEnd.add(() -> Client.getSingleton().sceneGraph.setSelectedUnderlays()));
 
 
-	}
-
-	/** Asks how the bridge should look and builds it over the selected tiles; Ctrl+Z undoes it in one step. */
-	private void showBridgeDialog(MainWindow application) {
-		String problem = BridgeBuilder.problem();
-		if (problem != null) {
-			FXDialogs.showWarning(application.getStage().getOwner(), "Generate bridge", problem);
-			return;
-		}
-
-		Spinner<Integer> ramp = new Spinner<>(0, 10, 2);
-		Spinner<Integer> overlay = new Spinner<>(0, 255, Math.max(Options.overlayPaintId.get(), 1));
-		Spinner<Integer> shape = new Spinner<>(1, 12, 1);
-		Spinner<Integer> deckHeight = new Spinner<>(0, 2000, 0);
-		CheckBox autoHeight = new CheckBox("Automatic (highest point under the bridge)");
-		autoHeight.setSelected(true);
-		deckHeight.disableProperty().bind(autoHeight.selectedProperty());
-		CheckBox flag = new CheckBox("Set bridge flag on the deck");
-		flag.setSelected(true);
-		for (Spinner<Integer> spinner : java.util.Arrays.asList(ramp, overlay, shape, deckHeight))
-			spinner.setEditable(true);
-
-		javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
-		grid.setHgap(10);
-		grid.setVgap(8);
-		grid.setPadding(new Insets(10));
-		grid.addRow(0, new Label("Deck height"), autoHeight);
-		grid.addRow(1, new Label(""), deckHeight);
-		grid.addRow(2, new Label("Ramp width (tiles)"), ramp);
-		grid.addRow(3, new Label("Deck overlay id (0 = keep)"), overlay);
-		grid.addRow(4, new Label("Overlay shape"), shape);
-		grid.addRow(5, new Label(""), flag);
-
-		Dialog<ButtonType> dialog = new Dialog<>();
-		dialog.initOwner(application.getStage());
-		dialog.setTitle("Generate bridge");
-		dialog.setHeaderText("The selected tiles become the bridge deck, built on the height level above the current one.\n"
-				+ "The terrain around the deck slopes down over the ramp width. Ctrl+Z undoes it in one step.");
-		dialog.getDialogPane().setContent(grid);
-		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-		if (dialog.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK)
-			return;
-
-		try {
-			// commit what was typed into the editable spinners
-			for (Spinner<Integer> spinner : java.util.Arrays.asList(ramp, overlay, shape, deckHeight))
-				spinner.increment(0);
-
-			BridgeBuilder.Settings settings = new BridgeBuilder.Settings();
-			settings.shape.rampWidth = ramp.getValue();
-			settings.shape.deckHeight = autoHeight.isSelected() ? BridgeShaper.AUTO : -deckHeight.getValue();
-			settings.overlayId = overlay.getValue();
-			settings.overlayShape = shape.getValue();
-			settings.bridgeFlag = flag.isSelected();
-			BridgeBuilder.buildBridge(settings);
-		} catch (Exception e) {
-			FXDialogs.showError(application.getStage().getOwner(), "Error while generating bridge!", "Message: " + e.getMessage());
-		}
 	}
 
 	private void deselectTools() {

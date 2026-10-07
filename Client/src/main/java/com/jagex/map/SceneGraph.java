@@ -5478,9 +5478,8 @@ public class SceneGraph {
 
 	/**
 	 * Builds a bridge on the level above {@code lowerPlane}: a deck on the given tiles and a ramp around it. {@code
-	 * line} is the line the bridge was drawn along (it sets the height profile), or null for a flat deck. The overlay
-	 * is only touched when {@code overlayId} is above 0. Heights, overlays and flags are stored together as one undo
-	 * step.
+	 * line} is the line the bridge was drawn along (it sets the height profile). The overlay is only touched when
+	 * {@code overlayId} is above 0. Heights, overlays and flags are stored together as one undo step.
 	 */
 	public void applyBridge(Set<Integer> deckTiles, List<double[]> line, int lowerPlane, BridgeShaper.Params params,
 			int overlayId, int overlayShape, boolean bridgeFlag) {

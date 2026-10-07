@@ -573,7 +573,6 @@
                                     <KeyCodeCombination alt="UP" code="E" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
                                  </accelerator>
                               </MenuItem>
-                              <MenuItem fx:id="generateBridgeBtn" mnemonicParsing="false" text="Generate bridge" />
                               <SeparatorMenuItem mnemonicParsing="false" />
                               <MenuItem fx:id="forceMapUpdateBtn" mnemonicParsing="false" text="Force map update" />
                               <MenuItem fx:id="fixHeightsBtn" mnemonicParsing="false" text="Reset tile heights" />

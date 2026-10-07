@@ -131,8 +131,7 @@ public class BridgeShaper {
 
 	/**
 	 * @param deckTiles    the tiles that become the bridge deck
-	 * @param line         the line the bridge was drawn along (tile centres), or null for a deck without a direction:
-	 *                     that one is flat, at the highest point of the terrain under it
+	 * @param line         the line the bridge was drawn along (tile centres); it sets the height profile
 	 * @param lowerHeights corner heights of the level the bridge crosses
 	 * @param upperHeights corner heights of the level the bridge is built on, the ramp slopes down to these
 	 */
@@ -154,17 +153,11 @@ public class BridgeShaper {
 			}
 		}
 
-		boolean directed = line != null && !line.isEmpty();
-		double startHeight = 0, endHeight = 0;
-		if (!directed) {
-			startHeight = params.deckHeight;
-			if (params.deckHeight == AUTO) {
-				startHeight = 0;
-				for (int corner : corners)
-					startHeight = Math.min(startHeight, lowerHeights[corner >> 16][corner & 0xFFFF]);
-			}
-			endHeight = startHeight;
-		} else if (params.deckHeight == AUTO) {
+		if (line.isEmpty())
+			return result;
+
+		double startHeight, endHeight;
+		if (params.deckHeight == AUTO) {
 			double[] first = line.get(0), last = line.get(line.size() - 1);
 			startHeight = groundAt(lowerHeights, first[0], first[1]);
 			endHeight = groundAt(lowerHeights, last[0], last[1]);
@@ -174,8 +167,8 @@ public class BridgeShaper {
 
 		for (int corner : corners) {
 			int x = corner >> 16, y = corner & 0xFFFF;
-			double t = directed ? progress(line, x, y) : 0.5;
-			double height = startHeight + (endHeight - startHeight) * t - (directed ? params.arc * 4 * t * (1 - t) : 0);
+			double t = progress(line, x, y);
+			double height = startHeight + (endHeight - startHeight) * t - params.arc * 4 * t * (1 - t);
 			result.deck.put(corner, withinLevel(round8(height), lowerHeights[x][y]));
 		}
 

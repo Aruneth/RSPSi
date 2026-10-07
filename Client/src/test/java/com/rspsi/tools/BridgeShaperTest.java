@@ -130,16 +130,6 @@ class BridgeShaperTest {
 			assertEquals(-100, h, "not below the ground");
 	}
 
-	@Test
-	void withoutADirectionTheDeckIsFlatAtTheHighestPoint() {
-		int[][] lower = flat(-40);
-		lower[6][10] = -120;
-		Set<Integer> tiles = new HashSet<>(Arrays.asList(BridgeShaper.key(5, 10), BridgeShaper.key(6, 10)));
-		BridgeShaper.Result r = BridgeShaper.shape(tiles, null, lower, flat(-280), new BridgeShaper.Params());
-		for (int h : r.deck.values())
-			assertEquals(-120, h);
-	}
-
 	// ---- ramp ----
 
 	@Test
