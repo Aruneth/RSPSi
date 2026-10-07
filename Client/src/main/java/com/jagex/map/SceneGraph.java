@@ -15,6 +15,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import com.rspsi.options.*;
+import com.rspsi.tools.CoastShaper;
 import com.rspsi.tools.MountainGenerator;
 import com.rspsi.tools.PathOverlayFitter;
 import javafx.scene.input.KeyCode;
@@ -118,6 +119,8 @@ public class SceneGraph {
 	private static boolean pathClickLatch;
 	/** Points of the mountain range being drawn with the mountain tool. */
 	private static final List<double[]> mountainPoints = new ArrayList<>();
+	/** Waypoints (tile centres) of the coast line being drawn with the coast tool. */
+	private static final List<double[]> coastPoints = new ArrayList<>();
 	static boolean mouseIsDown;
 	static int anInt446;
 	static int currentCameraPlane;
@@ -1761,6 +1764,18 @@ public class SceneGraph {
 						}
 					}
 					previewMountain(plane, tileX, tileY);
+				}
+				break;
+
+				case COAST: {
+					this.resetTiles();
+					if (mouseIsDown && !pathClickLatch) {
+						pathClickLatch = true;
+						double[] last = coastPoints.isEmpty() ? null : coastPoints.get(coastPoints.size() - 1);
+						if (last == null || last[0] != tileX + 0.5 || last[1] != tileY + 0.5)
+							coastPoints.add(new double[] { tileX + 0.5, tileY + 0.5 });
+					}
+					previewCoast(plane, tileX, tileY);
 				}
 				break;
 
@@ -5033,6 +5048,14 @@ public class SceneGraph {
 		pathPoints.clear();
 		this.resetTiles();
 
+		writeOverlayFits(fits, overlayId, plane);
+
+		if (Options.pathSmoothHeight.get())
+			smoothPathHeights(line, plane);
+	}
+
+	/** Writes fitted overlay tiles to the map as one undo step. */
+	private void writeOverlayFits(Map<Integer, PathOverlayFitter.Fit> fits, int overlayId, int plane) {
 		ToolType currentTool = Options.currentTool.get();
 		Options.currentTool.set(ToolType.PAINT_OVERLAY);
 		if (!this.currentStateCorrect()) {
@@ -5057,9 +5080,6 @@ public class SceneGraph {
 
 		SceneGraph.commitChanges();
 		Options.currentTool.set(currentTool);
-
-		if (Options.pathSmoothHeight.get())
-			smoothPathHeights(line, plane);
 	}
 
 	/**
@@ -5171,6 +5191,66 @@ public class SceneGraph {
 		this.updateHeights(minX - 3, minY - 3, maxX - minX + 3, maxY - minY + 3);
 		SceneGraph.commitChanges();
 		Options.currentTool.set(currentTool);
+	}
+
+	// ---- coast tool ----
+
+	private static CoastShaper.Params coastParams() {
+		CoastShaper.Params p = new CoastShaper.Params();
+		p.seaLeft = Options.coastSeaLeft.get();
+		p.seaWidth = Options.coastSeaWidth.get();
+		p.cliff = Options.coastCliff.get();
+		p.beachWidth = Options.coastBeachWidth.get();
+		p.cliffHeight = Options.coastCliffHeight.get();
+		p.cliffWidth = Options.coastCliffWidth.get();
+		p.plateauDepth = Options.coastPlateauDepth.get();
+		return p;
+	}
+
+	private List<double[]> coastLine(int tileX, int tileY) {
+		List<double[]> points = new ArrayList<>(coastPoints);
+		if (tileX >= 0 && tileY >= 0)
+			points.add(new double[] { tileX + 0.5, tileY + 0.5 });
+		return PathOverlayFitter.smooth(points);
+	}
+
+	private Map<Integer, PathOverlayFitter.Fit> fitCoastSea(List<double[]> line) {
+		CoastShaper.Params p = coastParams();
+		return PathOverlayFitter.fit(CoastShaper.shiftToSea(line, p.seaWidth / 2.0, p.seaLeft), p.seaWidth, width,
+				length, Options.pathEdgeSmoothing.get());
+	}
+
+	/** Shows the sea strip (the part that gets the overlay) next to the coast line. */
+	private void previewCoast(int plane, int tileX, int tileY) {
+		if (coastPoints.isEmpty())
+			return;
+		fitCoastSea(coastLine(tileX, tileY)).forEach((key, fit) -> addTemporaryTile(plane,
+				PathOverlayFitter.tileX(key), PathOverlayFitter.tileY(key), fit.shape, fit.rotation, -1, 0, 9997965));
+	}
+
+	public static void cancelCoast() {
+		coastPoints.clear();
+		onCycleEnd.add(() -> Client.getSingleton().sceneGraph.resetTiles());
+	}
+
+	/** Enter: writes the sea overlay and reshapes the terrain along the coast; runs on the render cycle. */
+	public static void applyCoast() {
+		onCycleEnd.add(() -> Client.getSingleton().sceneGraph.applyCoastToMap());
+	}
+
+	private void applyCoastToMap() {
+		int overlayId = Options.overlayPaintId.get();
+		if (coastPoints.size() < 2 || overlayId <= 0)
+			return;
+		int plane = Options.currentHeight.get();
+		List<double[]> line = coastLine(-1, -1);
+		Map<Integer, PathOverlayFitter.Fit> fits = fitCoastSea(line);
+		Map<Integer, Integer> heightChanges = CoastShaper.shape(line, coastParams(), getMapRegion().tileHeights[plane]);
+		coastPoints.clear();
+		this.resetTiles();
+
+		writeOverlayFits(fits, overlayId, plane);
+		applyMountainHeights(heightChanges);
 	}
 
 	// ---- mountain generator ----

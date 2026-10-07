@@ -254,6 +254,7 @@ public class MainController {
 	private TabPane toolsTabPane;
 
 	private Tab mountainTab;
+	private Tab coastTab;
 
 	@FXML
 	private MenuItem undoMenuItem;
@@ -303,6 +304,9 @@ public class MainController {
 
     @FXML
     private ToggleButton mountainBtn;
+
+    @FXML
+    private ToggleButton coastBtn;
 
     @FXML
     private VBox rightPanel;
@@ -432,6 +436,9 @@ public class MainController {
 			Options.currentTool.set(ToolType.MOUNTAIN);
 		}, mountainBtn.selectedProperty());
 		ChangeListenerUtil.addListener(true, () -> {
+			Options.currentTool.set(ToolType.COAST);
+		}, coastBtn.selectedProperty());
+		ChangeListenerUtil.addListener(true, () -> {
 			Options.currentTool.set(ToolType.PAINT_UNDERLAY);
 		}, paintUnderlayBtn.selectedProperty());
 		
@@ -510,6 +517,8 @@ public class MainController {
 		toolsTabPane.getTabs().add(createPathTab());
 		mountainTab = createMountainTab();
 		toolsTabPane.getTabs().add(mountainTab);
+		coastTab = createCoastTab();
+		toolsTabPane.getTabs().add(coastTab);
 		toolsTabPane.getSelectionModel().select(SwatchType.OBJECT.getId());
 
 	}
@@ -558,6 +567,49 @@ public class MainController {
 		scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 		scroll.setPrefWidth(0);
 		Tab tab = new Tab("Path");
+		tab.setContent(scroll);
+		return tab;
+	}
+
+	/** Settings of the coast tool. */
+	private Tab createCoastTab() {
+		Label intro = hint("Pick an overlay (the sea), then use the Coast tool: click points along the waterline, "
+				+ "press Enter to apply, Esc to cancel. The preview shows the sea side.");
+		RadioButton beach = new RadioButton("Beach (slopes down to the sea)");
+		RadioButton cliff = new RadioButton("Cliff (steep rock face)");
+		ToggleGroup mode = new ToggleGroup();
+		beach.setToggleGroup(mode);
+		cliff.setToggleGroup(mode);
+		cliff.setSelected(Options.coastCliff.get());
+		beach.setSelected(!Options.coastCliff.get());
+		cliff.selectedProperty().bindBidirectional(Options.coastCliff);
+
+		CheckBox seaLeft = new CheckBox("Sea on the left of the drawing direction");
+		seaLeft.selectedProperty().bindBidirectional(Options.coastSeaLeft);
+
+		VBox beachWidth = pathSlider("Beach width", " tiles", 1, 40, 1, Options.coastBeachWidth);
+		beachWidth.disableProperty().bind(Options.coastCliff);
+		VBox cliffHeight = pathSlider("Cliff height", " units", 50, 1500, 50, Options.coastCliffHeight);
+		VBox cliffWidth = pathSlider("Cliff width", " tiles", 1, 8, 1, Options.coastCliffWidth);
+		VBox plateau = pathSlider("Plateau depth", " tiles", 2, 40, 1, Options.coastPlateauDepth);
+		for (VBox slider : new VBox[] { cliffHeight, cliffWidth, plateau })
+			slider.disableProperty().bind(Options.coastCliff.not());
+
+		VBox box = new VBox(10, intro, beach, cliff, seaLeft,
+				pathSlider("Sea width", " tiles", 1, 40, 1, Options.coastSeaWidth),
+				hint("How far the sea overlay and the flat sea bed reach from the waterline."),
+				beachWidth,
+				hint("Beach: land heights fade smoothly to 0 over this distance."),
+				cliffHeight, cliffWidth, plateau,
+				hint("Cliff: the land rises steeply from the waterline to the cliff height and keeps that extra "
+						+ "height for the plateau depth, then fades back into the terrain."));
+		box.setPadding(new Insets(10));
+
+		ScrollPane scroll = new ScrollPane(box);
+		scroll.setFitToWidth(true);
+		scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+		scroll.setPrefWidth(0);
+		Tab tab = new Tab("Coast");
 		tab.setContent(scroll);
 		return tab;
 	}
@@ -970,6 +1022,10 @@ public class MainController {
 				this.mountainBtn.setSelected(true);
 				if (mountainTab != null)
 					toolsTabPane.getSelectionModel().select(mountainTab);
+			} else if(newVal == ToolType.COAST) {
+				this.coastBtn.setSelected(true);
+				if (coastTab != null)
+					toolsTabPane.getSelectionModel().select(coastTab);
 			} else if(newVal == ToolType.PAINT_UNDERLAY) {
 				this.paintUnderlayBtn.setSelected(true);
 			}
