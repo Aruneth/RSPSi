@@ -5427,6 +5427,7 @@ public class SceneGraph {
 		BridgeShaper.Params p = new BridgeShaper.Params();
 		p.rampWidth = (int) Math.round(Options.bridgeRamp.get());
 		p.deckHeight = Options.bridgeAutoHeight.get() ? BridgeShaper.AUTO : -(int) Math.round(Options.bridgeDeckHeight.get());
+		p.arc = (int) Math.round(Options.bridgeArc.get());
 		return p;
 	}
 
@@ -5441,13 +5442,16 @@ public class SceneGraph {
 	private void previewBridge(int plane, int tileX, int tileY) {
 		if (bridgePoints.isEmpty() || plane >= 3)
 			return;
-		Set<Integer> deck = BridgeShaper.deckTiles(bridgeLine(tileX, tileY), Options.bridgeWidth.get(), width, length);
-		BridgeShaper.Result bridge = BridgeShaper.shape(deck, getMapRegion().tileHeights[plane],
+		List<double[]> line = bridgeLine(tileX, tileY);
+		Set<Integer> deck = BridgeShaper.deckTiles(line, Options.bridgeWidth.get(), width, length);
+		BridgeShaper.Result bridge = BridgeShaper.shape(deck, line, getMapRegion().tileHeights[plane],
 				getMapRegion().tileHeights[plane + 1], bridgeParams());
-		bridge.ramp.keySet().forEach(key -> addTemporaryTile(plane, PathOverlayFitter.tileX(key),
-				PathOverlayFitter.tileY(key), 1, 0, -1, 0, 62000));
-		bridge.deck.keySet().forEach(key -> addTemporaryTile(plane, PathOverlayFitter.tileX(key),
-				PathOverlayFitter.tileY(key), 1, 0, -1, 0, 9997965));
+		bridge.ramp.keySet().forEach(key -> {
+			if (PathOverlayFitter.tileX(key) < width && PathOverlayFitter.tileY(key) < length)
+				addTemporaryTile(plane, PathOverlayFitter.tileX(key), PathOverlayFitter.tileY(key), 1, 0, -1, 0, 62000);
+		});
+		deck.forEach(key -> addTemporaryTile(plane, PathOverlayFitter.tileX(key), PathOverlayFitter.tileY(key), 1, 0,
+				-1, 0, 9997965));
 	}
 
 	public static void cancelBridge() {
@@ -5464,24 +5468,35 @@ public class SceneGraph {
 		int plane = Options.currentHeight.get();
 		if (bridgePoints.isEmpty() || plane >= 3)
 			return;
-		Set<Integer> deck = BridgeShaper.deckTiles(bridgeLine(-1, -1), Options.bridgeWidth.get(), width, length);
+		List<double[]> line = bridgeLine(-1, -1);
+		Set<Integer> deck = BridgeShaper.deckTiles(line, Options.bridgeWidth.get(), width, length);
 		bridgePoints.clear();
 		this.resetTiles();
-		applyBridge(deck, plane, bridgeParams(), Math.max(Options.overlayPaintId.get(), 0), 1, Options.bridgeFlag.get());
+		applyBridge(deck, line, plane, bridgeParams(), Math.max(Options.overlayPaintId.get(), 0), 1,
+				Options.bridgeFlag.get());
 	}
 
 	/**
-	 * Builds a bridge on the level above {@code lowerPlane}: a flat deck on the given tiles and a ramp around it. The
-	 * overlay is only touched when {@code overlayId} is above 0. Heights, overlays and flags are stored together as
-	 * one undo step.
+	 * Builds a bridge on the level above {@code lowerPlane}: a deck on the given tiles and a ramp around it. {@code
+	 * line} is the line the bridge was drawn along (it sets the height profile), or null for a flat deck. The overlay
+	 * is only touched when {@code overlayId} is above 0. Heights, overlays and flags are stored together as one undo
+	 * step.
 	 */
-	public void applyBridge(Set<Integer> deckTiles, int lowerPlane, BridgeShaper.Params params, int overlayId,
-			int overlayShape, boolean bridgeFlag) {
+	public void applyBridge(Set<Integer> deckTiles, List<double[]> line, int lowerPlane, BridgeShaper.Params params,
+			int overlayId, int overlayShape, boolean bridgeFlag) {
 		int plane = lowerPlane + 1;
-		BridgeShaper.Result bridge = BridgeShaper.shape(deckTiles, getMapRegion().tileHeights[lowerPlane],
+		BridgeShaper.Result bridge = BridgeShaper.shape(deckTiles, line, getMapRegion().tileHeights[lowerPlane],
 				getMapRegion().tileHeights[plane], params);
 		if (bridge.deck.isEmpty())
 			return;
+
+		// heights belong to tile corners; the corners on the far edge of the map are copied by setHeights()
+		Map<Integer, Integer> heights = new HashMap<>(bridge.ramp);
+		heights.putAll(bridge.deck);
+		heights.keySet().removeIf(key -> PathOverlayFitter.tileX(key) >= width || PathOverlayFitter.tileY(key) >= length);
+
+		Set<Integer> touched = new HashSet<>(heights.keySet());
+		touched.addAll(deckTiles);
 
 		ToolType currentTool = Options.currentTool.get();
 		Options.currentTool.set(ToolType.IMPORT_SELECTION);
@@ -5490,10 +5505,7 @@ public class SceneGraph {
 				initChanges();
 			}
 
-			Map<Integer, Integer> heights = new HashMap<>(bridge.ramp);
-			heights.putAll(bridge.deck);
-
-			for (int key : heights.keySet()) {
+			for (int key : touched) {
 				if (currentState.isPresent()) {
 					ImportTileState state = new ImportTileState(PathOverlayFitter.tileX(key), PathOverlayFitter.tileY(key), plane);
 					state.preserve();
@@ -5517,16 +5529,6 @@ public class SceneGraph {
 						getMapRegion().tileHeights[z][x][y] = getMapRegion().tileHeights[z - 1][x][y];
 				}
 
-				if (bridge.deck.containsKey(entry.getKey())) {
-					if (overlayId > 0) {
-						getMapRegion().overlays[plane][x][y] = (short) overlayId;
-						getMapRegion().overlayShapes[plane][x][y] = (byte) (overlayShape - 1);
-						getMapRegion().overlayOrientations[plane][x][y] = 0;
-					}
-					if (bridgeFlag)
-						getMapRegion().tileFlags[plane][x][y] |= RenderFlags.BRIDGE_TILE.getBit();
-				}
-
 				for (int tx = Math.max(x - 1, 0); tx <= x; tx++) {
 					for (int ty = Math.max(y - 1, 0); ty <= y; ty++) {
 						for (int z = 0; z < 4; z++) {
@@ -5535,6 +5537,20 @@ public class SceneGraph {
 						}
 					}
 				}
+			}
+
+			for (int key : deckTiles) {
+				int x = PathOverlayFitter.tileX(key);
+				int y = PathOverlayFitter.tileY(key);
+				if (overlayId > 0) {
+					getMapRegion().overlays[plane][x][y] = (short) overlayId;
+					getMapRegion().overlayShapes[plane][x][y] = (byte) (overlayShape - 1);
+					getMapRegion().overlayOrientations[plane][x][y] = 0;
+				}
+				if (bridgeFlag)
+					getMapRegion().tileFlags[plane][x][y] |= RenderFlags.BRIDGE_TILE.getBit();
+				if (tiles[plane][x][y] != null)
+					tiles[plane][x][y].hasUpdated = true;
 			}
 
 			getMapRegion().setHeights();//For beyond edge updates

@@ -649,7 +649,11 @@ public class MainController {
 				pathSlider("Deck width", " tiles", 1, 12, 1, Options.bridgeWidth),
 				hint("How wide the bridge is. 1 is a single tile."),
 				autoHeight, deckHeight,
-				hint("Automatic: the deck lies at the highest point of the terrain under it. Otherwise it gets a fixed height."),
+				hint("Automatic: the deck starts and ends at the height of the ground at your first and last point, "
+						+ "so it connects to the banks. Otherwise the whole deck gets this fixed height."),
+				pathSlider("Arch height", " units", 0, 800, 10, Options.bridgeArc),
+				hint("How far the middle of the bridge lies above a straight line between its ends. 0 gives a straight "
+						+ "(or sloping) deck, higher values give an arched bridge."),
 				pathSlider("Ramp width", " tiles", 0, 10, 1, Options.bridgeRamp),
 				hint("Around the deck the terrain slopes down to the ground over this many tiles. 0 gives a hard edge."),
 				flag);

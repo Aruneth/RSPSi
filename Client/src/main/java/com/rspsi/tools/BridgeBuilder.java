@@ -51,8 +51,8 @@ public class BridgeBuilder {
 			deck.add(BridgeShaper.key(tile.positionX, tile.positionY));
 
 		SceneGraph.onCycleEnd.add(() -> {
-			client.sceneGraph.applyBridge(deck, lowerPlane, settings.shape, settings.overlayId, settings.overlayShape,
-					settings.bridgeFlag);
+			client.sceneGraph.applyBridge(deck, null, lowerPlane, settings.shape, settings.overlayId,
+					settings.overlayShape, settings.bridgeFlag);
 			client.sceneGraph.resetTiles();
 		});
 	}

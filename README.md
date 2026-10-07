@@ -137,12 +137,19 @@ above the current height level, so the current level can be at most 2.
 1. Pick the height level the bridge crosses and an overlay for the deck (Overlay tab).
 2. Click points along the bridge. The preview shows the deck and, in a different colour, the ramp around it.
 3. Press `Enter` to build it or `Esc` to cancel. The deck stops at the first and last point you clicked.
-4. Settings (deck width, deck height, ramp width, bridge flag) are in the Bridge tab.
+4. Settings are in the Bridge tab:
+   - **Deck width**: how wide the bridge is.
+   - **Deck height**: automatic (the deck starts and ends at the height of the ground at your first and last point, so
+     it connects to the banks) or one fixed height for the whole deck.
+   - **Arch height**: how far the middle lies above a straight line between the ends. `0` gives a straight or sloping
+     bridge, a higher value gives an arched bridge.
+   - **Ramp width**: how many corners around the deck the terrain slopes down to the ground; `0` gives a hard edge.
+   - **Bridge flag**: sets the bridge tile flag on the deck.
 
 **From a selection (menu: *Generate bridge*)**
 1. With the select tile tool, select the tiles of the bridge deck.
 2. Choose *Generate bridge* in the menu and set the options:
-   - **Deck height**: automatic (the highest point under the deck) or a fixed height.
+   - **Deck height**: automatic (a flat deck at the highest point under it) or a fixed height.
    - **Ramp width**: the number of tiles around the deck over which the terrain slopes down to the ground. `0` gives a
      hard edge.
    - **Deck overlay id and shape**: what the deck looks like; id `0` keeps the overlay that is already there.

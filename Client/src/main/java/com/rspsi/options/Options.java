@@ -82,7 +82,8 @@ public class Options {
 
 	/** Settings of the bridge tool. */
 	public static DoubleProperty bridgeWidth = new SimpleDoubleProperty(3);
-	public static DoubleProperty bridgeRamp = new SimpleDoubleProperty(2);
+	public static DoubleProperty bridgeRamp = new SimpleDoubleProperty(1);
+	public static DoubleProperty bridgeArc = new SimpleDoubleProperty(0);
 	public static BooleanProperty bridgeAutoHeight = new SimpleBooleanProperty(true);
 	public static DoubleProperty bridgeDeckHeight = new SimpleDoubleProperty(0);
 	public static BooleanProperty bridgeFlag = new SimpleBooleanProperty(true);
