@@ -4974,12 +4974,17 @@ public class SceneGraph {
 	}
 
 
-	private Map<Integer, PathOverlayFitter.Fit> fitPath(int tileX, int tileY) {
+	private List<double[]> pathLine(int tileX, int tileY) {
 		List<double[]> points = new ArrayList<>(pathPoints);
 		if (tileX >= 0 && tileY >= 0)
 			points.add(new double[] { tileX + 0.5, tileY + 0.5 });
 		List<double[]> line = Options.pathSmoothCurve.get() ? PathOverlayFitter.smooth(points) : points;
-		return PathOverlayFitter.fit(line, Options.pathWidth.get(), width, length, Options.pathEdgeSmoothing.get());
+		return line;
+	}
+
+	private Map<Integer, PathOverlayFitter.Fit> fitPath(int tileX, int tileY) {
+		return PathOverlayFitter.fit(pathLine(tileX, tileY), Options.pathWidth.get(), width, length,
+				Options.pathEdgeSmoothing.get());
 	}
 
 	private void previewPath(int plane, int tileX, int tileY) {
@@ -5002,7 +5007,9 @@ public class SceneGraph {
 		if (pathPoints.isEmpty() || overlayId <= 0)
 			return;
 		int plane = Options.currentHeight.get();
-		Map<Integer, PathOverlayFitter.Fit> fits = fitPath(-1, -1);
+		List<double[]> line = pathLine(-1, -1);
+		Map<Integer, PathOverlayFitter.Fit> fits = PathOverlayFitter.fit(line, Options.pathWidth.get(), width, length,
+				Options.pathEdgeSmoothing.get());
 		pathPoints.clear();
 		this.resetTiles();
 
@@ -5028,6 +5035,120 @@ public class SceneGraph {
 
 		getMapRegion().updateTiles();
 
+		SceneGraph.commitChanges();
+		Options.currentTool.set(currentTool);
+
+		if (Options.pathSmoothHeight.get())
+			smoothPathHeights(line, plane);
+	}
+
+	/**
+	 * Evens out the terrain under a path by repeatedly blending every height point of the path with its neighbours.
+	 * Points around the path are left alone, so the path blends into the surrounding terrain. Stored as its own
+	 * undo step.
+	 */
+	private void smoothPathHeights(List<double[]> line, int plane) {
+		int passes = (int) Math.round(Options.pathHeightSmoothing.get());
+		if (passes <= 0 || line.isEmpty())
+			return;
+
+		// the path itself plus a blend zone around it, so the terrain next to the path slopes gradually
+		double reach = Options.pathWidth.get() / 2.0 + 1.5 + Options.pathHeightBlend.get();
+		double lineMinX = Double.MAX_VALUE, lineMinY = Double.MAX_VALUE, lineMaxX = -Double.MAX_VALUE, lineMaxY = -Double.MAX_VALUE;
+		for (double[] p : line) {
+			lineMinX = Math.min(lineMinX, p[0]);
+			lineMinY = Math.min(lineMinY, p[1]);
+			lineMaxX = Math.max(lineMaxX, p[0]);
+			lineMaxY = Math.max(lineMaxY, p[1]);
+		}
+		Set<Integer> vertexKeys = new HashSet<>();
+		int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, maxX = 0, maxY = 0;
+		for (int vx = Math.max(0, (int) (lineMinX - reach)); vx <= Math.min(width - 1, (int) (lineMaxX + reach) + 1); vx++) {
+			for (int vy = Math.max(0, (int) (lineMinY - reach)); vy <= Math.min(length - 1, (int) (lineMaxY + reach) + 1); vy++) {
+				if (PathOverlayFitter.distanceToPath(line, vx, vy) <= reach) {
+					vertexKeys.add(vx << 16 | vy);
+					minX = Math.min(minX, vx);
+					minY = Math.min(minY, vy);
+					maxX = Math.max(maxX, vx);
+					maxY = Math.max(maxY, vy);
+				}
+			}
+		}
+		if (vertexKeys.isEmpty())
+			return;
+
+		ToolType currentTool = Options.currentTool.get();
+		Options.currentTool.set(ToolType.MODIFY_HEIGHT);
+		if (!this.currentStateCorrect()) {
+			initChanges();
+		}
+
+		int[][] heights = getMapRegion().tileHeights[plane];
+		int[][] original = new int[heights.length][];
+		for (int x = 0; x < heights.length; x++)
+			original[x] = heights[x].clone();
+
+		for (int key : vertexKeys) {
+			int x = PathOverlayFitter.tileX(key);
+			int y = PathOverlayFitter.tileY(key);
+			if (currentState.isPresent()) {
+				for (int z = plane; z < 4; z++) {
+					HeightState state = new HeightState(x, y, z);
+					state.preserve();
+					((TileChange<HeightState>) currentState.get()).preserveTileState(state);
+				}
+			}
+		}
+
+		for (int pass = 0; pass < passes; pass++) {
+			int[][] previous = new int[heights.length][];
+			for (int x = 0; x < heights.length; x++)
+				previous[x] = heights[x].clone();
+			for (int key : vertexKeys) {
+				int x = PathOverlayFitter.tileX(key);
+				int y = PathOverlayFitter.tileY(key);
+				int total = 0;
+				int count = 0;
+				for (int xMod = x - 1; xMod <= x + 1; xMod++) {
+					for (int yMod = y - 1; yMod <= y + 1; yMod++) {
+						if (xMod >= 0 && yMod >= 0 && xMod < width && yMod < length) {
+							total += previous[xMod][yMod];
+							count++;
+						}
+					}
+				}
+				heights[x][y] = (previous[x][y] + total / count) / 2;
+			}
+		}
+
+		for (int key : vertexKeys) {
+			int x = PathOverlayFitter.tileX(key);
+			int y = PathOverlayFitter.tileY(key);
+			heights[x][y] = Math.min(heights[x][y], 0);
+			int diff = heights[x][y] - original[x][y];
+			getMapRegion().manualTileHeight[plane][x][y] = 1;
+			for (int z = plane + 1; z < 4; z++) {
+				getMapRegion().tileHeights[z][x][y] += diff;
+			}
+			for (int z = 1; z < 4; z++) {
+				if (getMapRegion().tileHeights[z][x][y] > getMapRegion().tileHeights[z - 1][x][y])
+					getMapRegion().tileHeights[z][x][y] = getMapRegion().tileHeights[z - 1][x][y];
+			}
+			for (int tx = Math.max(x - 1, 0); tx <= x; tx++) {
+				for (int ty = Math.max(y - 1, 0); ty <= y; ty++) {
+					for (int z = 0; z < 4; z++) {
+						if (tiles[z][tx][ty] != null)
+							tiles[z][tx][ty].hasUpdated = true;
+					}
+				}
+			}
+		}
+
+		getMapRegion().setHeights();//For beyond edge updates
+		tileQueue.clear();
+		this.shadeObjects(64, -50, -10, -50, 768);
+		getMapRegion().updateTiles();
+		this.updateHeights(minX - 3, minY - 3, maxX - minX + 3, maxY - minY + 3);
 		SceneGraph.commitChanges();
 		Options.currentTool.set(currentTool);
 	}

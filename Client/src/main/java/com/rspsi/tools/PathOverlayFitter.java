@@ -220,7 +220,7 @@ public class PathOverlayFitter {
 		return key & 0xFFFF;
 	}
 
-	private static double distanceToPath(List<double[]> points, double px, double py) {
+	public static double distanceToPath(List<double[]> points, double px, double py) {
 		if (points.size() == 1) {
 			double[] p = points.get(0);
 			return Math.hypot(px - p[0], py - p[1]);

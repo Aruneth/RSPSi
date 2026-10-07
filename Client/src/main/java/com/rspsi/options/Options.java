@@ -64,6 +64,10 @@ public class Options {
 	public static DoubleProperty pathWidth = new SimpleDoubleProperty(3);
 	public static BooleanProperty pathSmoothCurve = new SimpleBooleanProperty(true);
 	public static DoubleProperty pathEdgeSmoothing = new SimpleDoubleProperty(1.5);
+	public static BooleanProperty pathSmoothHeight = new SimpleBooleanProperty(false);
+	public static DoubleProperty pathHeightSmoothing = new SimpleDoubleProperty(5);
+	/** How many tiles around the path are blended into the surrounding terrain when smoothing heights. */
+	public static DoubleProperty pathHeightBlend = new SimpleDoubleProperty(4);
 	public static IntegerProperty underlayPaintId = new SimpleIntegerProperty(0);
 	public static ObjectProperty<BrushType> brushType = new SimpleObjectProperty<BrushType>(BrushType.RECTANGLE);
 	

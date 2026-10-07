@@ -317,7 +317,7 @@
                         </HBox>
                      </children>
                   </VBox>
-                  <VBox minWidth="300.0" HBox.hgrow="NEVER">
+                  <VBox fx:id="rightPanel" minWidth="250.0" prefWidth="300.0" HBox.hgrow="NEVER">
                      <children>
                         <HBox alignment="TOP_RIGHT" minHeight="-Infinity" prefHeight="41.0" style="-fx-background-radius: 6;">
                            <padding>
