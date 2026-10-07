@@ -18,7 +18,12 @@ import net.coobird.thumbnailator.Thumbnails;
 
 public class MapTile {
 
-	private static final ExecutorService executorService = Executors.newCachedThreadPool();
+	/** Each render builds a full scene graph, so only a few may run at once; the rest wait in the queue. */
+	private static final ExecutorService executorService = Executors.newFixedThreadPool(4, runnable -> {
+		Thread thread = new Thread(runnable, "map-tile-render");
+		thread.setDaemon(true);
+		return thread;
+	});
 		private int hash;
 		private boolean loaded;
 		
