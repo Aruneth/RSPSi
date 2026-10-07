@@ -74,4 +74,20 @@ class CoastShaperTest {
 		assertEquals(-100 - (int) p.cliffHeight, after(heights, c, 20 + (int) p.cliffWidth + 2, 30));
 		assertTrue(after(heights, c, 40, 30) == -100, "terrain far inland is back to the original");
 	}
+
+	@Test
+	void meanderIsDeterministicKeepsEndsAndStaysWithinAmplitude() {
+		List<double[]> a = CoastShaper.meander(line(), 3, 7);
+		List<double[]> b = CoastShaper.meander(line(), 3, 7);
+		assertEquals(a.size(), b.size());
+		double maxOffset = 0;
+		for (int i = 0; i < a.size(); i++) {
+			assertArrayEquals(a.get(i), b.get(i), 1e-9);
+			maxOffset = Math.max(maxOffset, Math.abs(a.get(i)[0] - 20));
+		}
+		assertEquals(20, a.get(0)[0], 1e-9);
+		assertEquals(20, a.get(a.size() - 1)[0], 1e-9);
+		assertTrue(maxOffset > 0.3 && maxOffset <= 3.0, "meanders, but within the amplitude: " + maxOffset);
+		assertEquals(20, CoastShaper.meander(line(), 0, 7).get(10)[0], 1e-9);
+	}
 }

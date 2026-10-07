@@ -5211,13 +5211,14 @@ public class SceneGraph {
 		List<double[]> points = new ArrayList<>(coastPoints);
 		if (tileX >= 0 && tileY >= 0)
 			points.add(new double[] { tileX + 0.5, tileY + 0.5 });
-		return PathOverlayFitter.smooth(points);
+		return CoastShaper.meander(PathOverlayFitter.smooth(points), Options.coastIrregularity.get(),
+				Options.coastSeed.get());
 	}
 
 	private Map<Integer, PathOverlayFitter.Fit> fitCoastSea(List<double[]> line) {
 		CoastShaper.Params p = coastParams();
 		return PathOverlayFitter.fit(CoastShaper.shiftToSea(line, p.seaWidth / 2.0, p.seaLeft), p.seaWidth, width,
-				length, Options.pathEdgeSmoothing.get());
+				length, Options.coastEdgeSmoothing.get());
 	}
 
 	/** Shows the sea strip (the part that gets the overlay) next to the coast line. */

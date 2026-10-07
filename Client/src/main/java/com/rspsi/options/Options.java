@@ -71,6 +71,9 @@ public class Options {
 	/** Settings of the coast tool. */
 	public static BooleanProperty coastCliff = new SimpleBooleanProperty(false);
 	public static BooleanProperty coastSeaLeft = new SimpleBooleanProperty(true);
+	public static DoubleProperty coastIrregularity = new SimpleDoubleProperty(2);
+	public static DoubleProperty coastEdgeSmoothing = new SimpleDoubleProperty(2);
+	public static IntegerProperty coastSeed = new SimpleIntegerProperty(1);
 	public static DoubleProperty coastSeaWidth = new SimpleDoubleProperty(8);
 	public static DoubleProperty coastBeachWidth = new SimpleDoubleProperty(8);
 	public static DoubleProperty coastCliffHeight = new SimpleDoubleProperty(300);

@@ -26,6 +26,79 @@ public class CoastShaper {
 		public double plateauDepth = 10;
 	}
 
+	/**
+	 * Makes a drawn coast line look natural: resamples it to one point per tile and pushes every point sideways by
+	 * smooth, seeded noise, so the shore gets small bays and headlands. Same input always gives the same line.
+	 */
+	public static List<double[]> meander(List<double[]> line, double amplitude, long seed) {
+		List<double[]> dense = resample(line, 1.0);
+		if (amplitude <= 0 || dense.size() < 3)
+			return dense;
+		List<double[]> out = new ArrayList<>();
+		double arc = 0;
+		int n = dense.size();
+		for (int i = 0; i < n; i++) {
+			double[] a = dense.get(Math.max(i - 1, 0));
+			double[] b = dense.get(Math.min(i + 1, n - 1));
+			double dx = b[0] - a[0], dy = b[1] - a[1];
+			double len = Math.hypot(dx, dy);
+			double[] p = dense.get(i);
+			if (i > 0)
+				arc += Math.hypot(p[0] - dense.get(i - 1)[0], p[1] - dense.get(i - 1)[1]);
+			// two octaves: broad bays (about 14 tiles) plus small irregularities (about 5 tiles)
+			double offset = (noise(arc / 14.0, seed) * 0.7 + noise(arc / 5.0, seed + 101) * 0.3) * amplitude;
+			// the ends stay where they were drawn
+			double fade = Math.min(1, Math.min(i, n - 1 - i) / 4.0);
+			offset *= fade;
+			out.add(len == 0 ? p.clone() : new double[] { p[0] - dy / len * offset, p[1] + dx / len * offset });
+		}
+		return out;
+	}
+
+	/** Points spaced {@code step} apart along the line. */
+	static List<double[]> resample(List<double[]> line, double step) {
+		List<double[]> out = new ArrayList<>();
+		if (line.isEmpty())
+			return out;
+		out.add(line.get(0).clone());
+		double carry = 0;
+		for (int i = 0; i < line.size() - 1; i++) {
+			double[] a = line.get(i), b = line.get(i + 1);
+			double seg = Math.hypot(b[0] - a[0], b[1] - a[1]);
+			double pos = step - carry;
+			while (pos <= seg) {
+				double t = pos / seg;
+				out.add(new double[] { a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t });
+				pos += step;
+			}
+			carry = seg - (pos - step);
+		}
+		double[] last = line.get(line.size() - 1);
+		double[] end = out.get(out.size() - 1);
+		if (Math.hypot(last[0] - end[0], last[1] - end[1]) > 1e-6)
+			out.add(last.clone());
+		return out;
+	}
+
+	/** Smooth 1D value noise in [-1, 1]. */
+	private static double noise(double x, long seed) {
+		int i = (int) Math.floor(x);
+		double f = x - i;
+		return lerp(hash(i, seed), hash(i + 1, seed), f * f * (3 - 2 * f));
+	}
+
+	private static double hash(int i, long seed) {
+		long h = i * 0x9E3779B97F4A7C15L + seed * 0xC2B2AE3D27D4EB4FL;
+		h ^= h >>> 29;
+		h *= 0xBF58476D1CE4E5B9L;
+		h ^= h >>> 32;
+		return ((h & 0xFFFFFF) / (double) 0xFFFFFF) * 2 - 1;
+	}
+
+	private static double lerp(double a, double b, double t) {
+		return a + (b - a) * t;
+	}
+
 	/** Moves every point of the line sideways by {@code distance} towards the sea. */
 	public static List<double[]> shiftToSea(List<double[]> line, double distance, boolean seaLeft) {
 		List<double[]> out = new ArrayList<>();

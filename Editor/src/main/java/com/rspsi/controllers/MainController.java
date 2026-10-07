@@ -595,7 +595,14 @@ public class MainController {
 		for (VBox slider : new VBox[] { cliffHeight, cliffWidth, plateau })
 			slider.disableProperty().bind(Options.coastCliff.not());
 
+		Button newSeedButton = new Button("New shoreline shape");
+		newSeedButton.setOnAction(evt -> Options.coastSeed.set((int) (Math.random() * 1_000_000)));
+
 		VBox box = new VBox(10, intro, beach, cliff, seaLeft,
+				pathSlider("Irregularity", " tiles", 0, 8, 0.5, Options.coastIrregularity),
+				hint("How much the shoreline meanders: bays and headlands around the line you drew. 0 follows your line exactly."),
+				pathSlider("Edge smoothing", "", 0, 4, 0.5, Options.coastEdgeSmoothing),
+				newSeedButton,
 				pathSlider("Sea width", " tiles", 1, 40, 1, Options.coastSeaWidth),
 				hint("How far the sea overlay and the flat sea bed reach from the waterline."),
 				beachWidth,
