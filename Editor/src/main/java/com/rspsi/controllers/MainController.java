@@ -587,7 +587,7 @@ public class MainController {
 		CheckBox seaLeft = new CheckBox("Sea on the left of the drawing direction");
 		seaLeft.selectedProperty().bindBidirectional(Options.coastSeaLeft);
 
-		VBox beachWidth = pathSlider("Beach width", " tiles", 1, 40, 1, Options.coastBeachWidth);
+		VBox beachWidth = pathSlider("Beach width", " tiles", 1, 80, 1, Options.coastBeachWidth);
 		beachWidth.disableProperty().bind(Options.coastCliff);
 		VBox cliffHeight = pathSlider("Cliff height", " units", 50, 1500, 50, Options.coastCliffHeight);
 		VBox cliffWidth = pathSlider("Cliff width", " tiles", 1, 8, 1, Options.coastCliffWidth);
@@ -606,7 +606,7 @@ public class MainController {
 				pathSlider("Sea width", " tiles", 1, 40, 1, Options.coastSeaWidth),
 				hint("How far the sea overlay and the flat sea bed reach from the waterline."),
 				beachWidth,
-				hint("Beach: land heights fade smoothly to 0 over this distance."),
+				hint("Beach: land heights slope gently down to 0 over this distance. Use a larger width on high terrain, otherwise the slope stays steep."),
 				cliffHeight, cliffWidth, plateau,
 				hint("Cliff: the land rises steeply from the waterline to the cliff height and keeps that extra "
 						+ "height for the plateau depth, then fades back into the terrain."));

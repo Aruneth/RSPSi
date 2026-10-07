@@ -20,7 +20,7 @@ public class CoastShaper {
 		public boolean seaLeft = true;
 		public double seaWidth = 8;
 		public boolean cliff = false;
-		public double beachWidth = 8;
+		public double beachWidth = 24;
 		public double cliffHeight = 300;
 		public double cliffWidth = 2;
 		public double plateauDepth = 10;

@@ -75,7 +75,7 @@ public class Options {
 	public static DoubleProperty coastEdgeSmoothing = new SimpleDoubleProperty(2);
 	public static IntegerProperty coastSeed = new SimpleIntegerProperty(1);
 	public static DoubleProperty coastSeaWidth = new SimpleDoubleProperty(8);
-	public static DoubleProperty coastBeachWidth = new SimpleDoubleProperty(8);
+	public static DoubleProperty coastBeachWidth = new SimpleDoubleProperty(24);
 	public static DoubleProperty coastCliffHeight = new SimpleDoubleProperty(300);
 	public static DoubleProperty coastCliffWidth = new SimpleDoubleProperty(2);
 	public static DoubleProperty coastPlateauDepth = new SimpleDoubleProperty(10);
