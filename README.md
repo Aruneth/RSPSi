@@ -128,13 +128,20 @@ Details:
 - Other height actions are in the menu: *Copy heights from tile*, *Set heights to tiles* (for a whole selection),
   *Set Tile Height* and the bridge generator.
 
-## Bridge generator
+## Bridge tool
 
-Builds a bridge over a stretch of the map, for example over a river or a ravine.
+Builds a bridge over a stretch of the map, for example over a river or a ravine. The bridge is built on the level
+above the current height level, so the current level can be at most 2.
 
-1. Pick the height level the bridge crosses (the bridge is built on the level above, so at most level 2).
-2. With the select tile tool, select the tiles of the bridge deck.
-3. Choose *Generate bridge* in the menu and set the options:
+**Drawing a bridge (`BRG` button)**
+1. Pick the height level the bridge crosses and an overlay for the deck (Overlay tab).
+2. Click points along the bridge. The preview shows the deck and, in a different colour, the ramp around it.
+3. Press `Enter` to build it or `Esc` to cancel. The deck stops at the first and last point you clicked.
+4. Settings (deck width, deck height, ramp width, bridge flag) are in the Bridge tab.
+
+**From a selection (menu: *Generate bridge*)**
+1. With the select tile tool, select the tiles of the bridge deck.
+2. Choose *Generate bridge* in the menu and set the options:
    - **Deck height**: automatic (the highest point under the deck) or a fixed height.
    - **Ramp width**: the number of tiles around the deck over which the terrain slopes down to the ground. `0` gives a
      hard edge.

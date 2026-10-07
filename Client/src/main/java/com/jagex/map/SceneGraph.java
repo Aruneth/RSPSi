@@ -122,6 +122,7 @@ public class SceneGraph {
 	private static final List<double[]> mountainPoints = new ArrayList<>();
 	/** Waypoints (tile centres) of the coast line being drawn with the coast tool. */
 	private static final List<double[]> coastPoints = new ArrayList<>();
+	private static final List<double[]> bridgePoints = new ArrayList<>();
 	static boolean mouseIsDown;
 	static int anInt446;
 	static int currentCameraPlane;
@@ -1777,6 +1778,18 @@ public class SceneGraph {
 							coastPoints.add(new double[] { tileX + 0.5, tileY + 0.5 });
 					}
 					previewCoast(plane, tileX, tileY);
+				}
+				break;
+
+				case BRIDGE: {
+					this.resetTiles();
+					if (mouseIsDown && !pathClickLatch) {
+						pathClickLatch = true;
+						double[] last = bridgePoints.isEmpty() ? null : bridgePoints.get(bridgePoints.size() - 1);
+						if (last == null || last[0] != tileX + 0.5 || last[1] != tileY + 0.5)
+							bridgePoints.add(new double[] { tileX + 0.5, tileY + 0.5 });
+					}
+					previewBridge(plane, tileX, tileY);
 				}
 				break;
 
@@ -5406,6 +5419,55 @@ public class SceneGraph {
 		this.updateHeights(minX - 3, minY - 3, maxX - minX + 3, maxY - minY + 3);
 		SceneGraph.commitChanges();
 		Options.currentTool.set(currentTool);
+	}
+
+	// ---- bridge tool ----
+
+	private static BridgeShaper.Params bridgeParams() {
+		BridgeShaper.Params p = new BridgeShaper.Params();
+		p.rampWidth = (int) Math.round(Options.bridgeRamp.get());
+		p.deckHeight = Options.bridgeAutoHeight.get() ? BridgeShaper.AUTO : -(int) Math.round(Options.bridgeDeckHeight.get());
+		return p;
+	}
+
+	private List<double[]> bridgeLine(int tileX, int tileY) {
+		List<double[]> points = new ArrayList<>(bridgePoints);
+		if (tileX >= 0 && tileY >= 0)
+			points.add(new double[] { tileX + 0.5, tileY + 0.5 });
+		return points;
+	}
+
+	/** Shows the deck (the tiles that get the overlay) and the ramp around it, as it will come out. */
+	private void previewBridge(int plane, int tileX, int tileY) {
+		if (bridgePoints.isEmpty() || plane >= 3)
+			return;
+		Set<Integer> deck = BridgeShaper.deckTiles(bridgeLine(tileX, tileY), Options.bridgeWidth.get(), width, length);
+		BridgeShaper.Result bridge = BridgeShaper.shape(deck, getMapRegion().tileHeights[plane],
+				getMapRegion().tileHeights[plane + 1], bridgeParams());
+		bridge.ramp.keySet().forEach(key -> addTemporaryTile(plane, PathOverlayFitter.tileX(key),
+				PathOverlayFitter.tileY(key), 1, 0, -1, 0, 62000));
+		bridge.deck.keySet().forEach(key -> addTemporaryTile(plane, PathOverlayFitter.tileX(key),
+				PathOverlayFitter.tileY(key), 1, 0, -1, 0, 9997965));
+	}
+
+	public static void cancelBridge() {
+		bridgePoints.clear();
+		onCycleEnd.add(() -> Client.getSingleton().sceneGraph.resetTiles());
+	}
+
+	/** Enter: builds the bridge along the drawn line; runs on the render cycle. */
+	public static void applyBridgeLine() {
+		onCycleEnd.add(() -> Client.getSingleton().sceneGraph.applyBridgeToMap());
+	}
+
+	private void applyBridgeToMap() {
+		int plane = Options.currentHeight.get();
+		if (bridgePoints.isEmpty() || plane >= 3)
+			return;
+		Set<Integer> deck = BridgeShaper.deckTiles(bridgeLine(-1, -1), Options.bridgeWidth.get(), width, length);
+		bridgePoints.clear();
+		this.resetTiles();
+		applyBridge(deck, plane, bridgeParams(), Math.max(Options.overlayPaintId.get(), 0), 1, Options.bridgeFlag.get());
 	}
 
 	/**

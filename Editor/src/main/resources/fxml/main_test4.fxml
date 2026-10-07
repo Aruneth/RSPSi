@@ -173,6 +173,18 @@
                                           </Tooltip>
                                        </tooltip>
                                     </ToggleButton>
+                                    <ToggleButton fx:id="bridgeBtn" accessibleHelp="Bridge" focusTraversable="false" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" prefHeight="30.0" prefWidth="30.0" text="BRG" toggleGroup="$toolGroup">
+                                       <font>
+                                          <Font name="JetBrains Mono Regular" size="8.0" />
+                                       </font>
+                                       <tooltip>
+                                          <Tooltip text="Bridge (click points along the bridge, Enter = build, Esc = cancel; settings in the Bridge tab)">
+                                             <font>
+                                                <Font name="JetBrains Mono Regular" size="13.0" />
+                                             </font>
+                                          </Tooltip>
+                                       </tooltip>
+                                    </ToggleButton>
                                  </children>
                                  <padding>
                                     <Insets top="12.0" />

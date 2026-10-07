@@ -488,12 +488,15 @@ public class MainWindow extends Application {
 			// Filter (capture phase) so Enter/Esc reach the path tool whichever control has focus
 			primaryStage.addEventFilter(KeyEvent.KEY_PRESSED, evt -> {
 				ToolType tool = Options.currentTool.get();
-				if ((tool != ToolType.PAINT_PATH && tool != ToolType.MOUNTAIN && tool != ToolType.COAST)
+				if ((tool != ToolType.PAINT_PATH && tool != ToolType.MOUNTAIN && tool != ToolType.COAST
+							&& tool != ToolType.BRIDGE)
 						|| primaryStage.getScene().getFocusOwner() instanceof javafx.scene.control.TextInputControl)
 					return;
 				if (evt.getCode() == javafx.scene.input.KeyCode.ENTER) {
 					if (tool == ToolType.MOUNTAIN)
 						SceneGraph.applyMountain();
+					else if (tool == ToolType.BRIDGE)
+						SceneGraph.applyBridgeLine();
 					else if (tool == ToolType.COAST)
 						SceneGraph.applyCoast();
 					else
@@ -502,6 +505,8 @@ public class MainWindow extends Application {
 				} else if (evt.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
 					if (tool == ToolType.MOUNTAIN)
 						SceneGraph.cancelMountain();
+					else if (tool == ToolType.BRIDGE)
+						SceneGraph.cancelBridge();
 					else if (tool == ToolType.COAST)
 						SceneGraph.cancelCoast();
 					else

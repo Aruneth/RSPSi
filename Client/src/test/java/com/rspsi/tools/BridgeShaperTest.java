@@ -84,6 +84,26 @@ class BridgeShaperTest {
 	}
 
 	@Test
+	void deckTilesFollowTheLineWithTheGivenWidth() {
+		java.util.List<double[]> line = Arrays.asList(new double[] { 2.5, 10.5 }, new double[] { 12.5, 10.5 });
+		Set<Integer> three = BridgeShaper.deckTiles(line, 3, 20, 20);
+		assertTrue(three.contains(BridgeShaper.key(7, 9)) && three.contains(BridgeShaper.key(7, 10))
+				&& three.contains(BridgeShaper.key(7, 11)));
+		assertFalse(three.contains(BridgeShaper.key(7, 12)));
+		assertFalse(three.contains(BridgeShaper.key(14, 10)), "stops at the end of the line");
+		assertFalse(three.contains(BridgeShaper.key(1, 10)), "no cap before the first point");
+		assertEquals(33, three.size());
+		assertEquals(11, BridgeShaper.deckTiles(line, 1, 20, 20).size());
+	}
+
+	@Test
+	void deckTilesStayInsideTheMap() {
+		java.util.List<double[]> line = Arrays.asList(new double[] { 0.5, 0.5 }, new double[] { 19.5, 0.5 });
+		for (int key : BridgeShaper.deckTiles(line, 5, 20, 20))
+			assertTrue((key >> 16) >= 0 && (key >> 16) < 20 && (key & 0xFFFF) >= 0 && (key & 0xFFFF) < 20);
+	}
+
+	@Test
 	void emptyDeckGivesEmptyResult() {
 		BridgeShaper.Result r = BridgeShaper.shape(new HashSet<>(), flat(0), flat(0), new BridgeShaper.Params());
 		assertTrue(r.deck.isEmpty() && r.ramp.isEmpty());

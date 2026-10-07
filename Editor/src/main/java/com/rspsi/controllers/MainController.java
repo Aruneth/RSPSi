@@ -256,6 +256,7 @@ public class MainController {
 
 	private Tab mountainTab;
 	private Tab coastTab;
+	private Tab bridgeTab;
 
 	@FXML
 	private MenuItem undoMenuItem;
@@ -308,6 +309,9 @@ public class MainController {
 
     @FXML
     private ToggleButton coastBtn;
+
+    @FXML
+    private ToggleButton bridgeBtn;
 
     @FXML
     private VBox rightPanel;
@@ -440,6 +444,9 @@ public class MainController {
 			Options.currentTool.set(ToolType.COAST);
 		}, coastBtn.selectedProperty());
 		ChangeListenerUtil.addListener(true, () -> {
+			Options.currentTool.set(ToolType.BRIDGE);
+		}, bridgeBtn.selectedProperty());
+		ChangeListenerUtil.addListener(true, () -> {
 			Options.currentTool.set(ToolType.PAINT_UNDERLAY);
 		}, paintUnderlayBtn.selectedProperty());
 		
@@ -520,6 +527,8 @@ public class MainController {
 		toolsTabPane.getTabs().add(mountainTab);
 		coastTab = createCoastTab();
 		toolsTabPane.getTabs().add(coastTab);
+		bridgeTab = createBridgeTab();
+		toolsTabPane.getTabs().add(bridgeTab);
 		toolsTabPane.getSelectionModel().select(SwatchType.OBJECT.getId());
 
 	}
@@ -618,6 +627,39 @@ public class MainController {
 		scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 		scroll.setPrefWidth(0);
 		Tab tab = new Tab("Coast");
+		tab.setContent(scroll);
+		return tab;
+	}
+
+	/** Settings of the bridge tool. */
+	private Tab createBridgeTab() {
+		Label intro = hint("Pick the height level the bridge crosses and an overlay for the deck, then use the Bridge tool: "
+				+ "click points along the bridge, press Enter to build it, Esc to cancel. The bridge is built on the "
+				+ "level above (so at most level 2). The preview shows the deck and the ramp around it. "
+				+ "Ctrl+Z undoes the whole bridge.");
+
+		CheckBox autoHeight = new CheckBox("Automatic deck height");
+		autoHeight.selectedProperty().bindBidirectional(Options.bridgeAutoHeight);
+		VBox deckHeight = pathSlider("Deck height", " units", 0, 1500, 10, Options.bridgeDeckHeight);
+		deckHeight.disableProperty().bind(Options.bridgeAutoHeight);
+		CheckBox flag = new CheckBox("Set bridge flag on the deck");
+		flag.selectedProperty().bindBidirectional(Options.bridgeFlag);
+
+		VBox box = new VBox(10, intro,
+				pathSlider("Deck width", " tiles", 1, 12, 1, Options.bridgeWidth),
+				hint("How wide the bridge is. 1 is a single tile."),
+				autoHeight, deckHeight,
+				hint("Automatic: the deck lies at the highest point of the terrain under it. Otherwise it gets a fixed height."),
+				pathSlider("Ramp width", " tiles", 0, 10, 1, Options.bridgeRamp),
+				hint("Around the deck the terrain slopes down to the ground over this many tiles. 0 gives a hard edge."),
+				flag);
+		box.setPadding(new Insets(10));
+
+		ScrollPane scroll = new ScrollPane(box);
+		scroll.setFitToWidth(true);
+		scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+		scroll.setPrefWidth(0);
+		Tab tab = new Tab("Bridge");
 		tab.setContent(scroll);
 		return tab;
 	}
@@ -1028,6 +1070,10 @@ public class MainController {
 				this.coastBtn.setSelected(true);
 				if (coastTab != null)
 					toolsTabPane.getSelectionModel().select(coastTab);
+			} else if(newVal == ToolType.BRIDGE) {
+				this.bridgeBtn.setSelected(true);
+				if (bridgeTab != null)
+					toolsTabPane.getSelectionModel().select(bridgeTab);
 			} else if(newVal == ToolType.PAINT_UNDERLAY) {
 				this.paintUnderlayBtn.setSelected(true);
 			}

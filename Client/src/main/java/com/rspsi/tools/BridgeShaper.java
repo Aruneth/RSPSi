@@ -33,6 +33,53 @@ public class BridgeShaper {
 	}
 
 	/**
+	 * The tiles of a straight-lined deck drawn along {@code line} (tile centres): every tile whose centre is within half
+	 * the width of the line. Tiles outside the map are left out.
+	 */
+	public static Set<Integer> deckTiles(java.util.List<double[]> line, double deckWidth, int mapWidth, int mapLength) {
+		Set<Integer> tiles = new HashSet<>();
+		if (line.isEmpty())
+			return tiles;
+		double reach = Math.max(deckWidth, 1) / 2.0;
+		double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+		for (double[] p : line) {
+			minX = Math.min(minX, p[0]);
+			minY = Math.min(minY, p[1]);
+			maxX = Math.max(maxX, p[0]);
+			maxY = Math.max(maxY, p[1]);
+		}
+		for (int x = Math.max(0, (int) Math.floor(minX - reach)); x <= Math.min(mapWidth - 1, (int) Math.ceil(maxX + reach)); x++) {
+			for (int y = Math.max(0, (int) Math.floor(minY - reach)); y <= Math.min(mapLength - 1, (int) Math.ceil(maxY + reach)); y++) {
+				if (distanceToLine(line, x + 0.5, y + 0.5) <= reach + 1e-9)
+					tiles.add(key(x, y));
+			}
+		}
+		return tiles;
+	}
+
+	/**
+	 * Distance to the line, with flat ends: the deck stops at the first and last point instead of reaching past them.
+	 * Bends in between are rounded so the deck has no gaps there.
+	 */
+	private static double distanceToLine(java.util.List<double[]> line, double px, double py) {
+		if (line.size() == 1)
+			return Math.hypot(px - line.get(0)[0], py - line.get(0)[1]);
+		double best = Double.MAX_VALUE;
+		int last = line.size() - 2;
+		for (int i = 0; i <= last; i++) {
+			double ax = line.get(i)[0], ay = line.get(i)[1], bx = line.get(i + 1)[0], by = line.get(i + 1)[1];
+			double dx = bx - ax, dy = by - ay;
+			double len2 = dx * dx + dy * dy;
+			double raw = len2 == 0 ? 0 : ((px - ax) * dx + (py - ay) * dy) / len2;
+			if ((i == 0 && raw < 0) || (i == last && raw > 1))
+				continue;
+			double t = Math.max(0, Math.min(1, raw));
+			best = Math.min(best, Math.hypot(px - (ax + t * dx), py - (ay + t * dy)));
+		}
+		return best;
+	}
+
+	/**
 	 * @param deck         the tiles that become the bridge deck
 	 * @param lowerHeights heights of the level the bridge crosses, used to find the deck height
 	 * @param upperHeights heights of the level the bridge is built on, the ramp slopes down to these

@@ -79,6 +79,13 @@ public class Options {
 	public static DoubleProperty coastCliffHeight = new SimpleDoubleProperty(300);
 	public static DoubleProperty coastCliffWidth = new SimpleDoubleProperty(2);
 	public static DoubleProperty coastPlateauDepth = new SimpleDoubleProperty(10);
+
+	/** Settings of the bridge tool. */
+	public static DoubleProperty bridgeWidth = new SimpleDoubleProperty(3);
+	public static DoubleProperty bridgeRamp = new SimpleDoubleProperty(2);
+	public static BooleanProperty bridgeAutoHeight = new SimpleBooleanProperty(true);
+	public static DoubleProperty bridgeDeckHeight = new SimpleDoubleProperty(0);
+	public static BooleanProperty bridgeFlag = new SimpleBooleanProperty(true);
 	/** Settings of the mountain generator. */
 	public static BooleanProperty mountainRange = new SimpleBooleanProperty(false);
 	public static DoubleProperty mountainHeight = new SimpleDoubleProperty(600);
