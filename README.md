@@ -4,7 +4,8 @@ RSPSi is a desktop map editor for RuneScape private servers. It loads a game cac
 you edit the terrain and the objects on it: paint floors, raise and lower the ground, place and remove objects, set
 tile flags, and save the result back to your cache or to map files.
 
-This repository is a fork with additional features, most notably the **Path tool** (see below).
+This repository is a fork with additional features, most notably the **Path**, **Coast**, **Mountain** and **Bridge**
+tools (see below).
 
 ## Features
 
@@ -14,6 +15,8 @@ This repository is a fork with additional features, most notably the **Path tool
   overlay shapes and rotation. Hold the modifier keys to remove an overlay or to only repaint the overlay colour.
 - **Path tool**: draw a path by clicking points and let RSPSi lay the overlay with matching shapes (details below).
 - **Coast tool**: draw a waterline and get a sea overlay with a beach or cliff along it (details below).
+- **Mountain tool**: raise a hill or a whole mountain range, optionally with a cliff edge (details below).
+- **Bridge tool**: draw a bridge over a river or ravine, flat, sloping or arched, with a live preview (details below).
 - **Modify heights** with a brush, with optional smoothing, relative or absolute height, and multiple height levels.
 - **Tile flags**: set unwalkable, bridge, remove roof, render on z - 1 and disable render flags, with overlays to
   visualise them.
@@ -25,7 +28,7 @@ This repository is a fork with additional features, most notably the **Path tool
 - Copy flags, heights, overlays or underlays from one tile to a selection.
 - Set heights, flags, overlays and underlays on a whole selection in one action.
 - Import a prefab and export selected tiles to reuse them elsewhere.
-- Draw bridges with the bridge tool (details below), reset tile heights and force a map update.
+- Reset tile heights and force a map update.
 
 ### Files and tools
 - Open a map by coordinates, by hash, from `.dat`/`.gz` files, from `.pack` files or from your cache; save back to the
