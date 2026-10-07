@@ -33,6 +33,7 @@ class CoastShaperTest {
 	void seaSideIsFlattenedToZero() {
 		int[][] heights = flat(-100);
 		CoastShaper.Params p = new CoastShaper.Params();
+		p.beachWidth = 8;
 		Map<Integer, Integer> c = CoastShaper.shape(line(), p, heights);
 		assertEquals(0, after(heights, c, 15, 30));
 		assertEquals(-100, after(heights, c, 40, 30), "far land is untouched");
@@ -43,6 +44,7 @@ class CoastShaperTest {
 	void seaSideFlipsWithTheToggle() {
 		int[][] heights = flat(-100);
 		CoastShaper.Params p = new CoastShaper.Params();
+		p.beachWidth = 8;
 		p.seaLeft = false;
 		Map<Integer, Integer> c = CoastShaper.shape(line(), p, heights);
 		assertEquals(0, after(heights, c, 25, 30));
